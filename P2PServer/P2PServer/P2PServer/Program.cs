@@ -21,7 +21,7 @@ namespace P2PServer
 
         public List<HostData> Hosts = new List<HostData>();
 
-        public static void Start()
+        public static void StartServer()
         {
             IPHostEntry serverInfo = Dns.Resolve(Dns.GetHostName());
             // TODO: resolve deprecation above
@@ -116,7 +116,7 @@ namespace P2PServer
 
         public static void Main(string[] args)
         {
-            Start();
+            StartServer();
 
         }
     }
