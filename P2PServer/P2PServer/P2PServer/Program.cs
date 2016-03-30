@@ -8,10 +8,23 @@ using System.Threading.Tasks;
 
 namespace P2PServer
 {
-    public struct HostData
+    public class HostData
     {
-        string ip;
-        string name;
+        public string IP;
+        public string Name;
+
+        public override bool Equals(object obj)
+        {
+            HostData other = (HostData)obj;
+
+            return this.Name == other.Name;
+        }
+
+        public override int GetHashCode()
+        {
+            return Name.GetHashCode();
+        }
+
     }
 
 
@@ -21,7 +34,12 @@ namespace P2PServer
 
         public List<HostData> Hosts = new List<HostData>();
 
-        public static void StartServer()
+        public Server()
+        {
+            StartServer();
+        }
+
+        public void StartServer()
         {
             IPHostEntry serverInfo = Dns.Resolve(Dns.GetHostName());
             // TODO: resolve deprecation above
@@ -74,9 +92,117 @@ namespace P2PServer
 
                     Console.WriteLine("received: " + clientData);
 
-                    byte[] msg = Encoding.ASCII.GetBytes(clientData);
+                    // handle messages
 
-                    handler.Send(msg);
+                    // strip <EOF>
+
+                    clientData = clientData.Substring(0, clientData.Length - 5);
+
+                    Console.WriteLine(clientData);
+
+                    // split on hypen
+
+                    string[] clientSplit = clientData.Split('-');
+
+                    foreach(string section in clientSplit)
+                    {
+                        Console.WriteLine(section);
+                    }
+
+                    // switch on header
+
+                    switch(clientSplit[0])
+                    {
+                        case "addHost":
+                        {
+                            // create hostdata from client data string
+
+                            HostData client = new HostData();
+
+                            client.IP = clientSplit[1];
+                            client.Name = clientSplit[2];
+
+                            if (Hosts.Contains(client) == false)
+                            {
+                                // add host to list
+
+                                Hosts.Add(client);
+
+                                // let client know addition was successful
+
+                                byte[] msg = Encoding.ASCII.GetBytes("Addition of host successful");
+
+                                handler.Send(msg);
+                            }
+
+                            else
+                            {
+                                // let client know host was already added
+
+                                byte[] msg = Encoding.ASCII.GetBytes("Host already added");
+
+                                handler.Send(msg);
+                            }
+
+                            break;
+                        }
+                            
+                           
+
+                            
+
+                        case "removeHost":
+                        {
+                            // create hostdata from client data string
+
+                            HostData client = new HostData();
+
+                            client.IP = clientSplit[1];
+                            client.Name = clientSplit[2];
+
+                            if (Hosts.Contains(client) == true)
+                            {
+                                // remove host from list
+
+                                Hosts.Remove(client);
+
+                                // let client know removal was successful
+
+                                byte[] msg = Encoding.ASCII.GetBytes("Removal of host successful");
+
+                                handler.Send(msg);
+                            }
+
+                            else
+                            {
+                                // let client know host doesnt exist
+
+                                byte[] msg = Encoding.ASCII.GetBytes("Host doesnt exist");
+
+                                handler.Send(msg);
+                            }
+
+                            break;
+                        }
+                            
+
+                        case "addFile":
+                            break;
+
+                        case "removeFile":
+                            break;
+
+                        case "requestFile":
+                            break;
+
+                        default:
+                            break;
+                    }
+
+
+                    //byte[] msg = Encoding.ASCII.GetBytes(clientData);
+
+                    //handler.Send(msg);
                     handler.Shutdown(SocketShutdown.Both);
                     handler.Close();
                 }
@@ -117,8 +243,7 @@ namespace P2PServer
 
         public static void Main(string[] args)
         {
-            StartServer();
-
+            Server server = new Server();
         }
     }
 }

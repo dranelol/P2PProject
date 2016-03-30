@@ -9,15 +9,28 @@ using System.Threading.Tasks;
 
 namespace P2PClient
 {
-    public struct HostData
+    public class HostData
     {
         public string IP;
         public string Name;
+
+        public override bool Equals(object obj)
+        {
+            HostData other = (HostData)obj;
+
+            return this.Name == other.Name;
+        }
+
+        public override int GetHashCode()
+        {
+            return Name.GetHashCode();
+        }
+
     }
 
     class Client
     {
-        private HostData hostData;
+        private HostData hostData = new HostData();
 
         public Client()
         {
@@ -100,8 +113,6 @@ namespace P2PClient
         public void StartClient()
         {
             byte[] dataBuffer = new Byte[1024];
-
-            
 
             while (true)
             {
