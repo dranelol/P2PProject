@@ -66,6 +66,7 @@ namespace P2PServer
 
                         if(clientData.IndexOf("<EOF>") > -1)
                         {
+                            Console.WriteLine("breaking");
                             break;
                         }
 
