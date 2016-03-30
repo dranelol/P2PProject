@@ -32,6 +32,8 @@ namespace P2PClient
     {
         private HostData hostData = new HostData();
 
+        private string filesDirectory = "C:\\TempDir\\";
+
         public Client()
         {
             hostData.Name = "default";

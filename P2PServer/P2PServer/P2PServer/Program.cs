@@ -113,6 +113,7 @@ namespace P2PServer
 
                     switch(clientSplit[0])
                     {
+                        #region add host
                         case "addHost":
                         {
                             // create hostdata from client data string
@@ -146,11 +147,9 @@ namespace P2PServer
 
                             break;
                         }
-                            
-                           
+                        #endregion
 
-                            
-
+                        #region remove host
                         case "removeHost":
                         {
                             // create hostdata from client data string
@@ -184,13 +183,124 @@ namespace P2PServer
 
                             break;
                         }
-                            
+                        #endregion
 
+                        #region add file
                         case "addFile":
-                            break;
+                        {
+                            // create hostdata from client data string
 
-                        case "removeFile":
+                            HostData client = new HostData();
+
+                            client.IP = clientSplit[1];
+                            client.Name = clientSplit[2];
+
+                            if(Hosts.Contains(client) == true)
+                            {
+                                string file = clientSplit[3];
+
+                                // add file to file listing
+
+                                if(FileDirectory.ContainsKey(file) == true)
+                                {
+                                    if(FileDirectory[file].Contains(client) == false)
+                                    {
+                                        FileDirectory[file].Add(client);
+
+                                        byte[] msg = Encoding.ASCII.GetBytes("File added!");
+
+                                        handler.Send(msg);
+                                    }
+
+                                    else
+                                    {
+                                        byte[] msg = Encoding.ASCII.GetBytes("File already added by this host");
+
+                                        handler.Send(msg);
+                                    }
+                                    
+                                }
+
+                                else
+                                {
+                                    FileDirectory[file] = new List<HostData>();
+
+                                    FileDirectory[file].Add(client);
+
+                                    byte[] msg = Encoding.ASCII.GetBytes("File added!");
+
+                                    handler.Send(msg);
+                                }
+                            }
+
+                            else
+                            {
+                                // let client know host doesnt exist
+
+                                byte[] msg = Encoding.ASCII.GetBytes("Host hasn't been added to host list yet");
+
+                                handler.Send(msg);
+                            }
+
                             break;
+                        }
+                        #endregion
+
+                        #region remove file
+                        case "removeFile":
+                        {
+                            HostData client = new HostData();
+
+                            client.IP = clientSplit[1];
+                            client.Name = clientSplit[2];
+
+                            if (Hosts.Contains(client) == true)
+                            {
+                                string file = clientSplit[3];
+
+                                // remove file from file listing
+
+                                if (FileDirectory.ContainsKey(file) == true)
+                                {
+                                    if (FileDirectory[file].Contains(client) == true)
+                                    {
+                                        FileDirectory[file].Remove(client);
+
+                                        byte[] msg = Encoding.ASCII.GetBytes("File removed successfully!");
+
+                                        handler.Send(msg);
+                                    }
+
+                                    else
+                                    {
+                                        byte[] msg = Encoding.ASCII.GetBytes("File not added by this host");
+
+                                        handler.Send(msg);
+                                    }
+
+                                }
+
+                                else
+                                {
+                                    byte[] msg = Encoding.ASCII.GetBytes("File not added by any hosts!");
+
+                                    handler.Send(msg);
+                                }
+                            }
+
+                            else
+                            {
+                                // let client know host doesnt exist
+
+                                byte[] msg = Encoding.ASCII.GetBytes("Host hasn't been added to host list yet");
+
+                                handler.Send(msg);
+                            }
+
+                            break;
+                        }
+
+                        #endregion
 
                         case "requestFile":
                             break;
