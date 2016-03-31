@@ -44,11 +44,12 @@ namespace P2PClient
         public Client()
         {
             hostData.Name = "default";
+            hostData.Port = listenerPort;
             Thread client = new Thread(StartClient);
             client.Start();
         }
 
-        public void Listen()
+        public void ListenSend()
         {
             IPHostEntry listenerInfo = Dns.GetHostEntry(Dns.GetHostName());
 
@@ -56,7 +57,7 @@ namespace P2PClient
 
             IPEndPoint endPoint = new IPEndPoint(ip, listenerPort);
 
-            Socket clientListener = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+            Socket clientListener = new Socket(AddressFamily.InterNetworkV6, SocketType.Stream, ProtocolType.Tcp);
 
             // listening loop
 
@@ -105,8 +106,6 @@ namespace P2PClient
 
                     // split clientData to get request information
 
-                    
-
                     // strip <EOF>
 
                     clientData = clientData.Substring(0, clientData.Length - 5);
@@ -121,43 +120,54 @@ namespace P2PClient
 
                     string header = clientSplit[0];
 
-                    if(header == "requestFile")
+                    switch(header)
                     {
-                        requestClient.IP = clientSplit[1];
-                        requestClient.Port = Convert.ToInt32(clientSplit[2]);
-                        requestClient.Name = clientSplit[3];
+                        case "requestFile":
+                        {
+                            requestClient.IP = clientSplit[1];
+                            requestClient.Port = Convert.ToInt32(clientSplit[2]);
+                            requestClient.Name = clientSplit[3];
 
-                        // open socket to request client
-                        IPHostEntry requestClientInfo = Dns.GetHostEntry(requestClient.IP);
+                            // open socket to request client
+                            IPHostEntry requestClientInfo = Dns.GetHostEntry(requestClient.IP);
 
-                        IPAddress requestClientIP = requestClientInfo.AddressList[0];
+                            IPAddress requestClientIP = requestClientInfo.AddressList[0];
 
-                        IPEndPoint requestClientEndPoint = new IPEndPoint(requestClientIP, requestClient.Port);
+                            IPEndPoint requestClientEndPoint = new IPEndPoint(requestClientIP, requestClient.Port);
 
-                        Socket requestClientSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+                            Socket requestClientSocket = new Socket(AddressFamily.InterNetworkV6, SocketType.Stream, ProtocolType.Tcp);
 
-                        requestClientSocket.Connect(requestClientEndPoint);
+                            requestClientSocket.Connect(requestClientEndPoint);
 
-                        // send file to client
+                            // send file to client
 
-                        string fileName = filesDirectory + clientSplit[4];
+                            string fileName = filesDirectory + clientSplit[4];
 
-                        Console.WriteLine("LISTENER THREAD:: Sending file: " + fileName);
+                            Console.WriteLine("LISTENER THREAD:: Sending file: " + fileName);
 
-                        requestClientSocket.SendFile(fileName);
+                            requestClientSocket.SendFile(fileName);
 
-                        requestClientSocket.Shutdown(SocketShutdown.Both);
-                        requestClientSocket.Close();
+                            requestClientSocket.Shutdown(SocketShutdown.Both);
+                            requestClientSocket.Close();
 
+                            break;
+                        }
 
-                    }
+                        case "sendFile":
+                        {
+                            
+                            //Console.WriteLine("LISTENER THREAD:: Receiving file: " + clientSplit[4]);
 
-                    else
-                    {
-                        byte[] msg = Encoding.ASCII.GetBytes("Invalid request header!");
-                        handler.Send(msg);
-                        handler.Shutdown(SocketShutdown.Both);
-                        handler.Close();
+                            break;
+                        }
+
+                        default:
+                            byte[] msg = Encoding.ASCII.GetBytes("Invalid request header!");
+                            handler.Send(msg);
+                            handler.Shutdown(SocketShutdown.Both);
+                            handler.Close();
+
+                            break;
                     }
 
                     
@@ -169,12 +179,13 @@ namespace P2PClient
 
             catch (Exception e)
             {
-                Console.WriteLine("LISTENER THREAD:: " + e.ToString());
+                Console.WriteLine("LLISTENER THREAD:: " + e.ToString());
             }
 
             Console.WriteLine("LISTENER THREAD:: shutting down listener...");
             Console.Read();
         }
+
 
         public void StartClient()
         {
@@ -344,9 +355,9 @@ namespace P2PClient
 
                                 int sent = sender.Send(message);
 
-                                int received = sender.Receive(dataBuffer);
+                                //int received = sender.Receive(dataBuffer);
 
-                                Console.WriteLine("From server: " + Encoding.ASCII.GetString(dataBuffer, 0, received));
+                                //Console.WriteLine("From server: " + Encoding.ASCII.GetString(dataBuffer, 0, received));
 
                                 sender.Shutdown(SocketShutdown.Both);
                                 sender.Close();
@@ -373,6 +384,7 @@ namespace P2PClient
                                 string portString = Console.ReadLine();
                                 int port = Convert.ToInt32(portString);
 
+                                hostData.Port = port;
                                 listenerPort = port;
                             }
 
@@ -396,7 +408,7 @@ namespace P2PClient
                                 Console.WriteLine("starting to listen...");
 
 
-                                Thread requestListening = new Thread(Listen);
+                                Thread requestListening = new Thread(ListenSend);
                                 requestListening.Start();
                             }
 

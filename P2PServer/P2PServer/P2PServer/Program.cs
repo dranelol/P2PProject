@@ -339,7 +339,7 @@ namespace P2PServer
 
                                         IPEndPoint fromClientEndPoint = new IPEndPoint(fromClientIP, fromClient.Port);
 
-                                        Socket fromClientSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+                                        Socket fromClientSocket = new Socket(AddressFamily.InterNetworkV6, SocketType.Stream, ProtocolType.Tcp);
 
                                         fromClientSocket.Connect(fromClientEndPoint);
 
@@ -355,9 +355,9 @@ namespace P2PServer
 
                                         int sent = fromClientSocket.Send(fileRequestMessage);
 
-                                        int received = fromClientSocket.Receive(dataBuffer);
+                                        //int received = fromClientSocket.Receive(dataBuffer);
 
-                                        Console.WriteLine("From request client: " + Encoding.ASCII.GetString(dataBuffer, 0, received));
+                                        //Console.WriteLine("From request client: " + Encoding.ASCII.GetString(dataBuffer, 0, received));
 
                                         fromClientSocket.Shutdown(SocketShutdown.Both);
                                         fromClientSocket.Close();
