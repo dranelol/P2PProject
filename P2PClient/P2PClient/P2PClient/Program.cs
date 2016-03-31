@@ -122,7 +122,27 @@ namespace P2PClient
                         requestClient.Port = Convert.ToInt32(clientSplit[2]);
                         requestClient.Name = clientSplit[3];
 
+                        // open socket to request client
+                        IPHostEntry requestClientInfo = Dns.GetHostEntry(requestClient.IP);
 
+                        IPAddress requestClientIP = requestClientInfo.AddressList[0];
+
+                        IPEndPoint requestClientEndPoint = new IPEndPoint(requestClientIP, requestClient.Port);
+
+                        Socket requestClientSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+
+                        requestClientSocket.Connect(requestClientEndPoint);
+
+                        // send file to client
+
+                        string fileName = filesDirectory + clientSplit[4];
+
+                        Console.WriteLine("Sending file: " + fileName);
+
+                        requestClientSocket.SendFile(fileName);
+
+                        requestClientSocket.Shutdown(SocketShutdown.Both);
+                        requestClientSocket.Close();
 
 
                     }
