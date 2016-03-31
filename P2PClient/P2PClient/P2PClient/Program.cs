@@ -35,9 +35,11 @@ namespace P2PClient
 
         private string filesDirectory = "C:\\TempDir1\\";
 
-        private string serverIP = "127.0.0.1";
+        private string serverIP = "192.168.1.100";
 
         private int serverPort = 8888;
+
+        private int listenerPort = 8886;
 
         public Client()
         {
@@ -48,17 +50,17 @@ namespace P2PClient
 
         public void Listen()
         {
-            IPHostEntry serverInfo = Dns.GetHostEntry(serverIP);
+            IPHostEntry listenerInfo = Dns.GetHostEntry(Dns.GetHostName());
 
-            IPAddress ip = serverInfo.AddressList[0];
+            IPAddress ip = listenerInfo.AddressList[0];
 
-            IPEndPoint endPoint = new IPEndPoint(ip, serverPort);
+            IPEndPoint endPoint = new IPEndPoint(ip, listenerPort);
 
             Socket clientListener = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
 
             // listening loop
 
-            Console.WriteLine("Listener started");
+            Console.WriteLine("LISTENER THREAD:: Listener started");
 
             string clientData = null;
 
@@ -72,7 +74,7 @@ namespace P2PClient
                 // listen for connections forever
                 while (true)
                 {
-                    Console.WriteLine("waiting...");
+                    Console.WriteLine("LISTENER THREAD:: waiting...");
 
                     Socket handler = clientListener.Accept();
 
@@ -95,7 +97,7 @@ namespace P2PClient
 
                     }
 
-                    Console.WriteLine("received: " + clientData);
+                    Console.WriteLine("LISTENER THREAD:: received: " + clientData);
 
                     // server sends request to this client to send another client a file
 
@@ -109,7 +111,7 @@ namespace P2PClient
 
                     clientData = clientData.Substring(0, clientData.Length - 5);
 
-                    Console.WriteLine(clientData);
+                    Console.WriteLine("LISTENER THREAD:: " + clientData);
 
                     // split on hypen
 
@@ -140,7 +142,7 @@ namespace P2PClient
 
                         string fileName = filesDirectory + clientSplit[4];
 
-                        Console.WriteLine("Sending file: " + fileName);
+                        Console.WriteLine("LISTENER THREAD:: Sending file: " + fileName);
 
                         requestClientSocket.SendFile(fileName);
 
@@ -167,10 +169,10 @@ namespace P2PClient
 
             catch (Exception e)
             {
-                Console.WriteLine(e.ToString());
+                Console.WriteLine("LISTENER THREAD:: " + e.ToString());
             }
 
-            Console.WriteLine("shutting down listener...");
+            Console.WriteLine("LISTENER THREAD:: shutting down listener...");
             Console.Read();
         }
 
@@ -182,7 +184,7 @@ namespace P2PClient
             {
                 try
                 {
-                    IPHostEntry hostInfo = Dns.GetHostEntry(serverIP);
+                    IPHostEntry hostInfo = Dns.GetHostEntry(Dns.GetHostName());
                     // TODO: Resolve deprecation
 
                     IPAddress ip = hostInfo.AddressList[0];
@@ -191,7 +193,7 @@ namespace P2PClient
 
                     IPEndPoint endPoint = new IPEndPoint(ip, serverPort);
 
-                    Socket sender = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+                    Socket sender = new Socket(AddressFamily.InterNetworkV6, SocketType.Stream, ProtocolType.Tcp);
 
 
                     try
@@ -206,7 +208,7 @@ namespace P2PClient
                         Console.WriteLine("4: remove file from server (hosted by self)");
                         Console.WriteLine("5: request file from server (hosted by other)");
                         Console.WriteLine("6: set unique host name (self)");
-                        Console.WriteLine("7: set port for incoming connections (self)");
+                        Console.WriteLine("7: set listening port for incoming connections (self)");
                         Console.WriteLine("8: set download folder location (self)");
                         Console.WriteLine("9: start listening for requests (self)");
                         Console.WriteLine("----------------------------------------------");
@@ -371,7 +373,7 @@ namespace P2PClient
                                 string portString = Console.ReadLine();
                                 int port = Convert.ToInt32(portString);
 
-                                hostData.Port = port;
+                                listenerPort = port;
                             }
 
                                 break;

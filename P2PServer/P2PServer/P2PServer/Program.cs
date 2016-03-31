@@ -42,14 +42,14 @@ namespace P2PServer
 
         public void StartServer()
         {
-            IPHostEntry serverInfo = Dns.Resolve(Dns.GetHostName());
+            IPHostEntry serverInfo = Dns.GetHostEntry(Dns.GetHostName());
             // TODO: resolve deprecation above
 
             IPAddress ip = serverInfo.AddressList[0];
 
             IPEndPoint endPoint = new IPEndPoint(ip, 8888);
 
-            Socket serverListener = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+            Socket serverListener = new Socket(AddressFamily.InterNetworkV6, SocketType.Stream, ProtocolType.Tcp);
 
             // listening loop
 
@@ -310,7 +310,87 @@ namespace P2PServer
 
                         case "requestFile":
                         {
+                            // create hostdata from client data string
 
+                            HostData client = new HostData();
+
+                            client.IP = clientSplit[1];
+                            client.Port = Convert.ToInt32(clientSplit[2]);
+                            client.Name = clientSplit[3];
+
+                            if (Hosts.Contains(client) == true)
+                            {
+                                string file = clientSplit[4];
+
+                                if (FileDirectory.ContainsKey(file) == true)
+                                {
+                                    if(FileDirectory[file].Count > 0)
+                                    {
+                                        // find first host that has file requested
+                                        HostData fromClient = FileDirectory[file][0];
+
+                                        
+
+                                        // open socket to fromClient
+
+                                        IPHostEntry fromClientHostInfo = Dns.GetHostEntry(fromClient.IP);
+
+                                        IPAddress fromClientIP = fromClientHostInfo.AddressList[0];
+
+                                        IPEndPoint fromClientEndPoint = new IPEndPoint(fromClientIP, fromClient.Port);
+
+                                        Socket fromClientSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+
+                                        fromClientSocket.Connect(fromClientEndPoint);
+
+                                        // build request to fromClient to send file to Client
+
+                                        Console.WriteLine("Connected to: ", fromClientSocket.RemoteEndPoint.ToString());
+
+                                        byte[] fileRequestMessage = Encoding.ASCII.GetBytes("requestFile" + "-" + client.IP + "-" + client.Port.ToString() + "-" + client.Name + "-" + file + "<EOF>");
+
+                                        dataBuffer = new Byte[1024];
+
+                                        // send request to fromClient to send file to client
+
+                                        int sent = fromClientSocket.Send(fileRequestMessage);
+
+                                        int received = fromClientSocket.Receive(dataBuffer);
+
+                                        Console.WriteLine("From request client: " + Encoding.ASCII.GetString(dataBuffer, 0, received));
+
+                                        fromClientSocket.Shutdown(SocketShutdown.Both);
+                                        fromClientSocket.Close();
+                                    }
+
+                                    else
+                                    {
+                                        byte[] msg = Encoding.ASCII.GetBytes("No hosts are hosting this file!");
+
+                                        handler.Send(msg);
+                                    }
+
+                                    
+                                }
+
+                                else
+                                {
+                                    byte[] msg = Encoding.ASCII.GetBytes("File not in directory!");
+
+                                    handler.Send(msg);
+                                }
+
+
+                            }
+
+                            else
+                            {
+                                // let client know host doesnt exist
+
+                                byte[] msg = Encoding.ASCII.GetBytes("Host hasn't been added to host list yet");
+
+                                handler.Send(msg);
+                            }
 
                             break;
                         }
