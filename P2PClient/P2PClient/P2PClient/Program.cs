@@ -35,6 +35,10 @@ namespace P2PClient
 
         private string filesDirectory = "C:\\TempDir1\\";
 
+        private string serverIP = "127.0.0.1";
+
+        private int serverPort = 8888;
+
         public Client()
         {
             hostData.Name = "default";
@@ -44,12 +48,11 @@ namespace P2PClient
 
         public void Listen()
         {
-            IPHostEntry serverInfo = Dns.Resolve(Dns.GetHostName());
-            // TODO: resolve deprecation above
+            IPHostEntry serverInfo = Dns.GetHostEntry(serverIP);
 
             IPAddress ip = serverInfo.AddressList[0];
 
-            IPEndPoint endPoint = new IPEndPoint(ip, hostData.Port);
+            IPEndPoint endPoint = new IPEndPoint(ip, serverPort);
 
             Socket clientListener = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
 
@@ -179,39 +182,20 @@ namespace P2PClient
             {
                 try
                 {
-                    IPHostEntry hostInfo = Dns.Resolve(Dns.GetHostName());
+                    IPHostEntry hostInfo = Dns.GetHostEntry(serverIP);
                     // TODO: Resolve deprecation
 
                     IPAddress ip = hostInfo.AddressList[0];
 
                     hostData.IP = ip.ToString();
 
-                    IPEndPoint endPoint = new IPEndPoint(ip, 8888);
+                    IPEndPoint endPoint = new IPEndPoint(ip, serverPort);
 
                     Socket sender = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
 
 
                     try
                     {
-
-
-                        //while (true)
-                        //{
-                        // connect to server
-                        
-
-                        //byte[] message = Encoding.ASCII.GetBytes("Testing send<EOF>");
-
-                        //dataBuffer = new Byte[1024];
-
-                        // send stuff
-                        //int sent = sender.Send(message);
-
-                        // receive stuff
-                        //int received = sender.Receive(dataBuffer);
-
-                        //Console.WriteLine("Echoed: " + Encoding.ASCII.GetString(dataBuffer, 0, received));
-
 
                         Console.WriteLine("choose thing:");
                         Console.WriteLine("----------------------------------------------");
@@ -344,7 +328,26 @@ namespace P2PClient
                             case "5":
                             {
                                 // request file from server
+                                sender.Connect(endPoint);
 
+                                Console.WriteLine("Connected to: ", sender.RemoteEndPoint.ToString());
+
+                                Console.WriteLine("File name:");
+
+                                string fileName = Console.ReadLine();
+
+                                byte[] message = Encoding.ASCII.GetBytes("requestFile" + "-" + hostData.IP + "-" + hostData.Port.ToString() + "-" + hostData.Name + "-" + fileName + "<EOF>");
+
+                                dataBuffer = new Byte[1024];
+
+                                int sent = sender.Send(message);
+
+                                int received = sender.Receive(dataBuffer);
+
+                                Console.WriteLine("From server: " + Encoding.ASCII.GetString(dataBuffer, 0, received));
+
+                                sender.Shutdown(SocketShutdown.Both);
+                                sender.Close();
 
                             }
 
