@@ -12,6 +12,7 @@ namespace P2PServer
     {
         public string IP;
         public string Name;
+        public int Port;
 
         public override bool Equals(object obj)
         {
@@ -121,7 +122,9 @@ namespace P2PServer
                             HostData client = new HostData();
 
                             client.IP = clientSplit[1];
-                            client.Name = clientSplit[2];
+                            client.Port = Convert.ToInt32(clientSplit[2]);
+                            client.Name = clientSplit[3];
+                            
 
                             if (Hosts.Contains(client) == false)
                             {
@@ -157,7 +160,8 @@ namespace P2PServer
                             HostData client = new HostData();
 
                             client.IP = clientSplit[1];
-                            client.Name = clientSplit[2];
+                            client.Port = Convert.ToInt32(clientSplit[2]);
+                            client.Name = clientSplit[3];
 
                             if (Hosts.Contains(client) == true)
                             {
@@ -193,11 +197,12 @@ namespace P2PServer
                             HostData client = new HostData();
 
                             client.IP = clientSplit[1];
-                            client.Name = clientSplit[2];
+                            client.Port = Convert.ToInt32(clientSplit[2]);
+                            client.Name = clientSplit[3];
 
                             if(Hosts.Contains(client) == true)
                             {
-                                string file = clientSplit[3];
+                                string file = clientSplit[4];
 
                                 // add file to file listing
 
@@ -252,11 +257,12 @@ namespace P2PServer
                             HostData client = new HostData();
 
                             client.IP = clientSplit[1];
-                            client.Name = clientSplit[2];
+                            client.Port = Convert.ToInt32(clientSplit[2]);
+                            client.Name = clientSplit[3];
 
                             if (Hosts.Contains(client) == true)
                             {
-                                string file = clientSplit[3];
+                                string file = clientSplit[4];
 
                                 // remove file from file listing
 
@@ -303,7 +309,11 @@ namespace P2PServer
                         #endregion
 
                         case "requestFile":
+                        {
+
+
                             break;
+                        }
 
                         default:
                             break;

@@ -13,6 +13,7 @@ namespace P2PClient
     {
         public string IP;
         public string Name;
+        public int Port;
 
         public override bool Equals(object obj)
         {
@@ -32,7 +33,7 @@ namespace P2PClient
     {
         private HostData hostData = new HostData();
 
-        private string filesDirectory = "C:\\TempDir\\";
+        private string filesDirectory = "C:\\TempDir1\\";
 
         public Client()
         {
@@ -48,7 +49,7 @@ namespace P2PClient
 
             IPAddress ip = serverInfo.AddressList[0];
 
-            IPEndPoint endPoint = new IPEndPoint(ip, 8889);
+            IPEndPoint endPoint = new IPEndPoint(ip, hostData.Port);
 
             Socket clientListener = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
 
@@ -93,11 +94,49 @@ namespace P2PClient
 
                     Console.WriteLine("received: " + clientData);
 
-                    byte[] msg = Encoding.ASCII.GetBytes(clientData);
+                    // server sends request to this client to send another client a file
 
-                    handler.Send(msg);
-                    handler.Shutdown(SocketShutdown.Both);
-                    handler.Close();
+                    // requestFileHeader - clientWantsFileIP - clientWantsFilePort - clientWantsFileName - wantedFile
+
+                    // split clientData to get request information
+
+                    
+
+                    // strip <EOF>
+
+                    clientData = clientData.Substring(0, clientData.Length - 5);
+
+                    Console.WriteLine(clientData);
+
+                    // split on hypen
+
+                    string[] clientSplit = clientData.Split('-');
+
+                    HostData requestClient = new HostData();
+
+                    string header = clientSplit[0];
+
+                    if(header == "requestFile")
+                    {
+                        requestClient.IP = clientSplit[1];
+                        requestClient.Port = Convert.ToInt32(clientSplit[2]);
+                        requestClient.Name = clientSplit[3];
+
+
+
+
+                    }
+
+                    else
+                    {
+                        byte[] msg = Encoding.ASCII.GetBytes("Invalid request header!");
+                        handler.Send(msg);
+                        handler.Shutdown(SocketShutdown.Both);
+                        handler.Close();
+                    }
+
+                    
+                    
                 }
 
 
@@ -163,6 +202,9 @@ namespace P2PClient
                         Console.WriteLine("4: remove file from server (hosted by self)");
                         Console.WriteLine("5: request file from server (hosted by other)");
                         Console.WriteLine("6: set unique host name (self)");
+                        Console.WriteLine("7: set port for incoming connections (self)");
+                        Console.WriteLine("8: set download folder location (self)");
+                        Console.WriteLine("9: start listening for requests (self)");
                         Console.WriteLine("----------------------------------------------");
 
                         string response = Console.ReadLine();
@@ -187,7 +229,7 @@ namespace P2PClient
 
                                 Console.WriteLine("Connected to: ", sender.RemoteEndPoint.ToString());
 
-                                byte[] message = Encoding.ASCII.GetBytes("addHost" + "-" + hostData.IP + "-" + hostData.Name + "<EOF>");
+                                byte[] message = Encoding.ASCII.GetBytes("addHost" + "-" + hostData.IP + "-" + hostData.Port.ToString() + "-" + hostData.Name + "<EOF>");
 
                                 dataBuffer = new Byte[1024];
 
@@ -210,7 +252,7 @@ namespace P2PClient
 
                                 Console.WriteLine("Connected to: ", sender.RemoteEndPoint.ToString());
 
-                                byte[] message = Encoding.ASCII.GetBytes("removeHost" + "-" + hostData.IP + "-" + hostData.Name + "<EOF>");
+                                byte[] message = Encoding.ASCII.GetBytes("removeHost" + "-" + hostData.IP + "-" + hostData.Port.ToString() + "-" + hostData.Name + "<EOF>");
 
                                 dataBuffer = new Byte[1024];
 
@@ -237,7 +279,7 @@ namespace P2PClient
 
                                 string fileName = Console.ReadLine();
 
-                                byte[] message = Encoding.ASCII.GetBytes("addFile" + "-" + hostData.IP + "-" + hostData.Name + "-" + fileName + "<EOF>");
+                                byte[] message = Encoding.ASCII.GetBytes("addFile" + "-" + hostData.IP + "-" + hostData.Port.ToString() + "-" + hostData.Name + "-" + fileName + "<EOF>");
 
                                 dataBuffer = new Byte[1024];
 
@@ -264,7 +306,7 @@ namespace P2PClient
 
                                 string fileName = Console.ReadLine();
 
-                                byte[] message = Encoding.ASCII.GetBytes("removeFile" + "-" + hostData.IP + "-" + hostData.Name + "-" + fileName + "<EOF>");
+                                byte[] message = Encoding.ASCII.GetBytes("removeFile" + "-" + hostData.IP + "-" + hostData.Port.ToString() + "-" + hostData.Name + "-" + fileName + "<EOF>");
 
                                 dataBuffer = new Byte[1024];
 
@@ -282,6 +324,8 @@ namespace P2PClient
                             case "5":
                             {
                                 // request file from server
+
+
                             }
 
                                 break;
@@ -293,6 +337,42 @@ namespace P2PClient
                                 string name = Console.ReadLine();
 
                                 hostData.Name = name;
+                            }
+
+                                break;
+
+                            case "7":
+                            {
+                                // set port 
+                                Console.WriteLine("Give port:");
+                                string portString = Console.ReadLine();
+                                int port = Convert.ToInt32(portString);
+
+                                hostData.Port = port;
+                            }
+
+                                break;
+
+                            case "8":
+                            {
+                                // set download folder
+                                Console.WriteLine("Give download folder location with double backslashes:");
+                                string folder = Console.ReadLine();
+
+                                filesDirectory = folder;
+
+
+                            }
+
+                                break;
+
+                            case "9":
+                            {
+                                Console.WriteLine("starting to listen...");
+
+
+                                Thread requestListening = new Thread(Listen);
+                                requestListening.Start();
                             }
 
                                 break;
@@ -344,8 +424,7 @@ namespace P2PClient
             Client client = new Client();
 
 
-            //Thread requestListening = new Thread(Listen);
-            //requestListening.Start();
+            
             
             
             
