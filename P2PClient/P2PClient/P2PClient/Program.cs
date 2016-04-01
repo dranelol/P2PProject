@@ -301,7 +301,11 @@ namespace P2PClient
 
                     // dump file to disk
 
-                    System.IO.StreamWriter file = new System.IO.StreamWriter(filesDirectory + fileName);
+                    string filePath = System.IO.Path.Combine(filesDirectory, fileName);
+
+                    Console.WriteLine("LISTENER RECEIVE THREAD:: writing to file: " + filePath);
+
+                    System.IO.StreamWriter file = new System.IO.StreamWriter(filePath);
 
                     file.WriteLine(data);
 
