@@ -12,7 +12,8 @@ namespace P2PServer
     {
         public string IP;
         public string Name;
-        public int Port;
+        public int ListenSendPort;
+        public int ListenReceivePort;
 
         public override bool Equals(object obj)
         {
@@ -125,8 +126,9 @@ namespace P2PServer
                             HostData client = new HostData();
 
                             client.IP = clientSplit[1];
-                            client.Port = Convert.ToInt32(clientSplit[2]);
-                            client.Name = clientSplit[3];
+                            client.ListenReceivePort = Convert.ToInt32(clientSplit[2]);
+                            client.ListenSendPort = Convert.ToInt32(clientSplit[3]);
+                            client.Name = clientSplit[4];
                             
 
                             if (Hosts.Contains(client) == false)
@@ -163,8 +165,9 @@ namespace P2PServer
                             HostData client = new HostData();
 
                             client.IP = clientSplit[1];
-                            client.Port = Convert.ToInt32(clientSplit[2]);
-                            client.Name = clientSplit[3];
+                            client.ListenReceivePort = Convert.ToInt32(clientSplit[2]);
+                            client.ListenSendPort = Convert.ToInt32(clientSplit[3]);
+                            client.Name = clientSplit[4];
 
                             if (Hosts.Contains(client) == true)
                             {
@@ -200,12 +203,13 @@ namespace P2PServer
                             HostData client = new HostData();
 
                             client.IP = clientSplit[1];
-                            client.Port = Convert.ToInt32(clientSplit[2]);
-                            client.Name = clientSplit[3];
+                            client.ListenReceivePort = Convert.ToInt32(clientSplit[2]);
+                            client.ListenSendPort = Convert.ToInt32(clientSplit[3]);
+                            client.Name = clientSplit[4];
 
                             if(Hosts.Contains(client) == true)
                             {
-                                string file = clientSplit[4];
+                                string file = clientSplit[5];
 
                                 // add file to file listing
 
@@ -260,12 +264,13 @@ namespace P2PServer
                             HostData client = new HostData();
 
                             client.IP = clientSplit[1];
-                            client.Port = Convert.ToInt32(clientSplit[2]);
-                            client.Name = clientSplit[3];
+                            client.ListenReceivePort = Convert.ToInt32(clientSplit[2]);
+                            client.ListenSendPort = Convert.ToInt32(clientSplit[3]);
+                            client.Name = clientSplit[4];
 
                             if (Hosts.Contains(client) == true)
                             {
-                                string file = clientSplit[4];
+                                string file = clientSplit[5];
 
                                 // remove file from file listing
 
@@ -311,6 +316,7 @@ namespace P2PServer
 
                         #endregion
 
+                        #region request file
                         case "requestFile":
                         {
                             // create hostdata from client data string
@@ -318,12 +324,13 @@ namespace P2PServer
                             HostData client = new HostData();
 
                             client.IP = clientSplit[1];
-                            client.Port = Convert.ToInt32(clientSplit[2]);
-                            client.Name = clientSplit[3];
+                            client.ListenReceivePort = Convert.ToInt32(clientSplit[2]);
+                            client.ListenSendPort = Convert.ToInt32(clientSplit[3]);
+                            client.Name = clientSplit[4];
 
                             if (Hosts.Contains(client) == true)
                             {
-                                string file = clientSplit[4];
+                                string file = clientSplit[5];
 
                                 if (FileDirectory.ContainsKey(file) == true)
                                 {
@@ -332,15 +339,15 @@ namespace P2PServer
                                         // find first host that has file requested
                                         HostData fromClient = FileDirectory[file][0];
 
-                                        
-
                                         // open socket to fromClient
 
                                         IPHostEntry fromClientHostInfo = Dns.GetHostEntry(fromClient.IP);
 
-                                        IPAddress fromClientIP = fromClientHostInfo.AddressList[0];
+                                        IPAddress fromClientIP = Array.Find(
+                                            fromClientHostInfo.AddressList,
+                                            a => a.AddressFamily == AddressFamily.InterNetwork);
 
-                                        IPEndPoint fromClientEndPoint = new IPEndPoint(fromClientIP, fromClient.Port);
+                                        IPEndPoint fromClientEndPoint = new IPEndPoint(fromClientIP, fromClient.ListenSendPort);
 
                                         Socket fromClientSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
 
@@ -350,7 +357,7 @@ namespace P2PServer
 
                                         Console.WriteLine("Connected to: ", fromClientSocket.RemoteEndPoint.ToString());
 
-                                        byte[] fileRequestMessage = Encoding.ASCII.GetBytes("requestFile" + "-" + client.IP + "-" + client.Port.ToString() + "-" + client.Name + "-" + file + "<EOF>");
+                                        byte[] fileRequestMessage = Encoding.ASCII.GetBytes("requestFile" + "-" + client.IP + "-" + client.ListenReceivePort.ToString() + "-" + client.Name + "-" + file + "<EOF>");
 
                                         dataBuffer = new Byte[1024];
 
@@ -398,6 +405,8 @@ namespace P2PServer
                             break;
                         }
 
+                        #endregion
+
                         default:
                             break;
                     }
@@ -422,27 +431,6 @@ namespace P2PServer
             Console.Read();
 
         }
-
-        public void AddFileFromHost(string file, HostData host)
-        {
-
-        }
-
-        public void RemoveFileFromHost(string file, HostData host)
-        {
-
-        }
-
-        public void AddHost(HostData host)
-        {
-
-        }
-
-        public void RemoveHost(HostData host)
-        {
-
-        }
-
 
         public static void Main(string[] args)
         {
