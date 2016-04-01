@@ -279,17 +279,13 @@ namespace P2PClient
 
                         if (clientData.IndexOf("<EOF>") > -1)
                         {
-                            Console.WriteLine("breaking");
                             break;
                         }
-
-
 
                     }
 
                     clientData = clientData.Substring(0, clientData.Length - 5);
 
-                    Console.WriteLine("LISTENER RECEIVE THREAD:: received: " + clientData);
 
                     char[] separators = "-".ToCharArray();
 
@@ -309,7 +305,7 @@ namespace P2PClient
 
                     file.WriteLine(data);
 
-                    
+                    Console.WriteLine("LISTENER RECEIVE THREAD:: file written");
 
                     file.Close();
 
