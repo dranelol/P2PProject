@@ -43,13 +43,16 @@ namespace P2PServer
         public void StartServer()
         {
             IPHostEntry serverInfo = Dns.GetHostEntry(Dns.GetHostName());
-            // TODO: resolve deprecation above
 
-            IPAddress ip = serverInfo.AddressList[0];
+            // get ipv4 address for self (server)
+
+            IPAddress ip = Array.Find(
+                serverInfo.AddressList,
+                a => a.AddressFamily == AddressFamily.InterNetwork);
 
             IPEndPoint endPoint = new IPEndPoint(ip, 8888);
 
-            Socket serverListener = new Socket(AddressFamily.InterNetworkV6, SocketType.Stream, ProtocolType.Tcp);
+            Socket serverListener = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
 
             // listening loop
 
@@ -339,7 +342,7 @@ namespace P2PServer
 
                                         IPEndPoint fromClientEndPoint = new IPEndPoint(fromClientIP, fromClient.Port);
 
-                                        Socket fromClientSocket = new Socket(AddressFamily.InterNetworkV6, SocketType.Stream, ProtocolType.Tcp);
+                                        Socket fromClientSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
 
                                         fromClientSocket.Connect(fromClientEndPoint);
 

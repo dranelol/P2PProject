@@ -35,7 +35,7 @@ namespace P2PClient
 
         private string filesDirectory = "C:\\TempDir1\\";
 
-        private string serverIP = "192.168.1.100";
+        private string serverIP = "130.70.82.158";
 
         private int serverPort = 8888;
 
@@ -45,6 +45,33 @@ namespace P2PClient
         {
             hostData.Name = "default";
             hostData.Port = listenerPort;
+            IPHostEntry hostInfo = Dns.GetHostEntry(Dns.GetHostName());
+
+            // get ipv4 address
+
+            IPAddress ip = Array.Find(
+                hostInfo.AddressList,
+                a => a.AddressFamily == AddressFamily.InterNetwork);
+
+            hostData.IP = ip.ToString();
+            Thread client = new Thread(StartClient);
+            client.Start();
+        }
+
+        public Client(string sIP)
+        {
+            serverIP = sIP;
+            hostData.Name = "default";
+            hostData.Port = listenerPort;
+            IPHostEntry hostInfo = Dns.GetHostEntry(Dns.GetHostName());
+
+            // get ipv4 address
+
+            IPAddress ip = Array.Find(
+                hostInfo.AddressList,
+                a => a.AddressFamily == AddressFamily.InterNetwork);
+
+            hostData.IP = ip.ToString();
             Thread client = new Thread(StartClient);
             client.Start();
         }
@@ -53,11 +80,15 @@ namespace P2PClient
         {
             IPHostEntry listenerInfo = Dns.GetHostEntry(Dns.GetHostName());
 
-            IPAddress ip = listenerInfo.AddressList[0];
+            // get ipv4 address for self (listener)
+
+            IPAddress ip = Array.Find(
+                listenerInfo.AddressList,
+                a => a.AddressFamily == AddressFamily.InterNetwork);
 
             IPEndPoint endPoint = new IPEndPoint(ip, listenerPort);
 
-            Socket clientListener = new Socket(AddressFamily.InterNetworkV6, SocketType.Stream, ProtocolType.Tcp);
+            Socket clientListener = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
 
             // listening loop
 
@@ -129,13 +160,20 @@ namespace P2PClient
                             requestClient.Name = clientSplit[3];
 
                             // open socket to request client
+                           
+
+                            // get ipv4 address for requesting client
+
+                            
                             IPHostEntry requestClientInfo = Dns.GetHostEntry(requestClient.IP);
 
-                            IPAddress requestClientIP = requestClientInfo.AddressList[0];
+                            IPAddress requestClientIP = Array.Find(
+                                requestClientInfo.AddressList,
+                                a => a.AddressFamily == AddressFamily.InterNetwork);
 
                             IPEndPoint requestClientEndPoint = new IPEndPoint(requestClientIP, requestClient.Port);
 
-                            Socket requestClientSocket = new Socket(AddressFamily.InterNetworkV6, SocketType.Stream, ProtocolType.Tcp);
+                            Socket requestClientSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
 
                             requestClientSocket.Connect(requestClientEndPoint);
 
@@ -195,16 +233,19 @@ namespace P2PClient
             {
                 try
                 {
-                    IPHostEntry hostInfo = Dns.GetHostEntry(Dns.GetHostName());
-                    // TODO: Resolve deprecation
+                    IPHostEntry hostInfo = Dns.GetHostEntry(serverIP);
 
-                    IPAddress ip = hostInfo.AddressList[0];
+                    // get ipv4 address
 
-                    hostData.IP = ip.ToString();
+                    IPAddress ip = Array.Find(
+                        hostInfo.AddressList,
+                        a => a.AddressFamily == AddressFamily.InterNetwork);
+
+                    Console.WriteLine(ip.ToString());
 
                     IPEndPoint endPoint = new IPEndPoint(ip, serverPort);
 
-                    Socket sender = new Socket(AddressFamily.InterNetworkV6, SocketType.Stream, ProtocolType.Tcp);
+                    Socket sender = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
 
 
                     try
@@ -458,9 +499,18 @@ namespace P2PClient
 
         public static void Main(string[] args)
         {
-            Client client = new Client();
+            if (args.Length > 0)
+            {
+                Client client = new Client(args[0]);
+            }
 
+            else
+            {
+                Client client = new Client();
+            }
+            
 
+            
             
             
             
