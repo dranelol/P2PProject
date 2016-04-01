@@ -287,7 +287,7 @@ namespace P2PClient
 
                     }
 
-                    clientData = clientData.Substring(0, clientData.Length - 5);
+                    clientData = clientData.Substring(0, clientData.Length - 7);
 
                     Console.WriteLine("LISTENER RECEIVE THREAD:: received: " + clientData);
 
