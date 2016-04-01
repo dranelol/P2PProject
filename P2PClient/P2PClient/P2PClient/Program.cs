@@ -189,10 +189,10 @@ namespace P2PClient
                                 Console.WriteLine("LISTENER SEND THREAD:: Sending file: " + fileName);
 
                                 byte[] preBuffer = Encoding.ASCII.GetBytes(fileName + "-");
-                                byte[] postBuffer = Encoding.ASCII.GetBytes("<EOF>" + Environment.NewLine);
+                                byte[] postBuffer = Encoding.ASCII.GetBytes("<EOF>");
 
                                 requestClientSocket.SendFile(fileName, preBuffer, postBuffer, TransmitFileOptions.UseDefaultWorkerThread);
-
+                                Console.WriteLine("LISTENER SEND THREAD:: SENT FILE");
                                 requestClientSocket.Shutdown(SocketShutdown.Both);
                                 requestClientSocket.Close();
                             }
@@ -287,7 +287,7 @@ namespace P2PClient
 
                     }
 
-                    clientData = clientData.Substring(0, clientData.Length - 7);
+                    clientData = clientData.Substring(0, clientData.Length - 5);
 
                     Console.WriteLine("LISTENER RECEIVE THREAD:: received: " + clientData);
 
@@ -308,6 +308,8 @@ namespace P2PClient
                     System.IO.StreamWriter file = new System.IO.StreamWriter(filePath);
 
                     file.WriteLine(data);
+
+                    
 
                     file.Close();
 
