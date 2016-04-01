@@ -188,7 +188,7 @@ namespace P2PClient
                             {
                                 Console.WriteLine("LISTENER SEND THREAD:: Sending file: " + fileName);
 
-                                byte[] preBuffer = Encoding.ASCII.GetBytes("");
+                                byte[] preBuffer = Encoding.ASCII.GetBytes(fileName + "-");
                                 byte[] postBuffer = Encoding.ASCII.GetBytes("<EOF>" + Environment.NewLine);
 
                                 requestClientSocket.SendFile(fileName, preBuffer, postBuffer, TransmitFileOptions.UseDefaultWorkerThread);
@@ -261,7 +261,7 @@ namespace P2PClient
                 // listen for connections forever
                 while (true)
                 {
-                    Console.WriteLine("waiting...");
+                    Console.WriteLine("LISTENER RECEIVE THREAD:: waiting...");
 
                     Socket handler = clientListener.Accept();
 
@@ -283,9 +283,29 @@ namespace P2PClient
                             break;
                         }
 
+
+
                     }
 
+                    clientData = clientData.Substring(0, clientData.Length - 5);
+
                     Console.WriteLine("LISTENER RECEIVE THREAD:: received: " + clientData);
+
+                    char[] separators = "-".ToCharArray();
+
+                    string[] clientSplit = clientData.Split(separators, 2);
+
+                    string fileName = clientSplit[0];
+
+                    string data = clientSplit[1];
+
+                    // dump file to disk
+
+                    System.IO.StreamWriter file = new System.IO.StreamWriter(filesDirectory + fileName);
+
+                    file.WriteLine(data);
+
+                    file.Close();
 
                     handler.Shutdown(SocketShutdown.Both);
                     handler.Close();
