@@ -6,6 +6,7 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using System.IO;
 
 namespace P2PClient
 {
@@ -43,6 +44,8 @@ namespace P2PClient
         private int listenerSendPort = 8886;
 
         private int listenerReceivePort = 8887;
+
+        private string fileToBeReceived;
 
         public Client()
         {
@@ -188,10 +191,13 @@ namespace P2PClient
                             {
                                 Console.WriteLine("LISTENER SEND THREAD:: Sending file: " + fileName);
 
-                                byte[] preBuffer = Encoding.ASCII.GetBytes(fileName + "-");
-                                byte[] postBuffer = Encoding.ASCII.GetBytes("<EOF>");
+                                //byte[] preBuffer = Encoding.ASCII.GetBytes(fileName + "-");
+                                //byte[] postBuffer = Encoding.ASCII.GetBytes("<EOF>");
 
-                                requestClientSocket.SendFile(fileName, preBuffer, postBuffer, TransmitFileOptions.UseDefaultWorkerThread);
+                                
+
+                                //requestClientSocket.SendFile(fileName, preBuffer, postBuffer, TransmitFileOptions.UseDefaultWorkerThread);
+                                requestClientSocket.SendFile(fileName);
                                 Console.WriteLine("LISTENER SEND THREAD:: SENT FILE");
                                 requestClientSocket.Shutdown(SocketShutdown.Both);
                                 requestClientSocket.Close();
@@ -267,33 +273,9 @@ namespace P2PClient
 
                     clientData = null;
 
-                    // while there's data to accept
-                    while (true)
-                    {
-                        dataBuffer = new Byte[1024];
-                        int received = handler.Receive(dataBuffer);
+                   
 
-                        // decode data sent
-
-                        clientData += Encoding.ASCII.GetString(dataBuffer, 0, received);
-
-                        if (clientData.IndexOf("<EOF>") > -1)
-                        {
-                            break;
-                        }
-
-                    }
-
-                    clientData = clientData.Substring(0, clientData.Length - 5);
-
-
-                    char[] separators = "-".ToCharArray();
-
-                    string[] clientSplit = clientData.Split(separators, 2);
-
-                    string fileName = clientSplit[0];
-
-                    string data = clientSplit[1];
+                    string fileName = fileToBeReceived;
 
                     // dump file to disk
 
@@ -301,13 +283,30 @@ namespace P2PClient
 
                     Console.WriteLine("LISTENER RECEIVE THREAD:: writing to file: " + filePath);
 
-                    System.IO.StreamWriter file = new System.IO.StreamWriter(filePath);
+                    FileStream fileStream = File.Create(filePath);
 
-                    file.WriteLine(data);
+                    dataBuffer = new Byte[1024];
+                    int received = handler.Receive(dataBuffer);
+
+                    // while there's data to accept
+                    while (received > 0)
+                    {
+                        
+
+                        // decode data sent
+
+                        fileStream.Write(dataBuffer, 0, received);
+
+                        //clientData += Encoding.ASCII.GetString(dataBuffer, 0, received);
+
+                        dataBuffer = new Byte[1024];
+                        received = handler.Receive(dataBuffer);
+                    }
+
 
                     Console.WriteLine("LISTENER RECEIVE THREAD:: file written");
 
-                    file.Close();
+                    fileStream.Close();
 
                     handler.Shutdown(SocketShutdown.Both);
                     handler.Close();
@@ -520,6 +519,8 @@ namespace P2PClient
                                 dataBuffer = new Byte[1024];
 
                                 int sent = sender.Send(message);
+
+                                fileToBeReceived = fileName;
 
                                 //int received = sender.Receive(dataBuffer);
 
