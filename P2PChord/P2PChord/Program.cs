@@ -81,7 +81,7 @@ namespace P2PDist
 
             Socket sender = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
 
-            // send message to server, adding self as a host
+            // send message to joiner, adding self as a host
             sender.Connect(endPoint);
 
             Console.WriteLine("Connected to: ", sender.RemoteEndPoint.ToString());
@@ -96,6 +96,7 @@ namespace P2PDist
 
             int sent = sender.Send(message);
 
+            // joiner responds with 
             int received = sender.Receive(dataBuffer);
 
             Console.WriteLine("From joined client: " + Encoding.ASCII.GetString(dataBuffer, 0, received));
@@ -698,7 +699,7 @@ namespace P2PDist
                         Console.WriteLine("8: set port for sending files (self)");
                         Console.WriteLine("9: set port for join listener");
                         Console.WriteLine("0: set ip for join listener");
-                        Console.WriteLine("-: start the listening threads (self)");
+                        Console.WriteLine("-: start the listening threads  (self)");
                         Console.WriteLine("----------------------------------------------");
 
                         string response = Console.ReadLine();
