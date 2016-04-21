@@ -345,7 +345,6 @@ namespace P2PClient
 
                     Socket sender = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
 
-
                     try
                     {
 
@@ -353,7 +352,7 @@ namespace P2PClient
                         Console.WriteLine("----------------------------------------------");
                         
                         Console.WriteLine("1: add host (self) to server");
-                        Console.WriteLine("2: remove host (self) to server");
+                        Console.WriteLine("2: remove host (self) from server");
                         Console.WriteLine("3: add file to server (hosted by self)");
                         Console.WriteLine("4: remove file from server (hosted by self)");
                         Console.WriteLine("5: request file from server (hosted by other)");
