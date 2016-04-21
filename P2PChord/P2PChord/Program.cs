@@ -96,7 +96,7 @@ namespace P2PDist
 
             int sent = sender.Send(message);
 
-            // joiner responds with 
+            // joiner responds with his host/file structure 
             int received = sender.Receive(dataBuffer);
 
             Console.WriteLine("From joined client: " + Encoding.ASCII.GetString(dataBuffer, 0, received));
@@ -592,7 +592,7 @@ namespace P2PDist
 
         public void ListenThread()
         {
-            // this thread listens for file requests once asking for them; receives files
+            // this thread listens for requests (send file to client, add file to hosts table, remove file, add host, etc)
 
             IPHostEntry listenerInfo = Dns.GetHostEntry(Dns.GetHostName());
 
@@ -622,47 +622,350 @@ namespace P2PDist
                 // listen for connections forever
                 while (true)
                 {
-                    Console.WriteLine("LISTENER RECEIVE THREAD:: waiting...");
+                    Console.WriteLine("waiting...");
 
-                    Socket handler = clientListener.Accept();
+                    Socket handler = serverListener.Accept();
 
                     clientData = null;
 
-
-
-                    string fileName = fileToBeReceived;
-
-                    // dump file to disk
-
-                    string filePath = System.IO.Path.Combine(filesDirectory, fileName);
-
-                    Console.WriteLine("LISTENER RECEIVE THREAD:: writing to file: " + filePath);
-
-                    FileStream fileStream = File.Create(filePath);
-
-                    dataBuffer = new Byte[1024];
-                    int received = handler.Receive(dataBuffer);
-                    Console.WriteLine("received bytes: " + received);
                     // while there's data to accept
-                    while (received > 0)
+                    while (true)
                     {
-                        Console.WriteLine("received bytes: " + received);
+                        dataBuffer = new Byte[1024];
+                        int received = handler.Receive(dataBuffer);
 
                         // decode data sent
 
-                        fileStream.Write(dataBuffer, 0, received);
+                        clientData += Encoding.ASCII.GetString(dataBuffer, 0, received);
 
-                        //clientData += Encoding.ASCII.GetString(dataBuffer, 0, received);
+                        if (clientData.IndexOf("<EOF>") > -1)
+                        {
+                            Console.WriteLine("breaking");
+                            break;
+                        }
 
-                        dataBuffer = new Byte[1024];
-                        received = handler.Receive(dataBuffer);
+                    }
+
+                    Console.WriteLine("received: " + clientData);
+
+                    // handle messages
+
+                    // strip <EOF>
+
+                    clientData = clientData.Substring(0, clientData.Length - 5);
+
+                    Console.WriteLine(clientData);
+
+                    // split on hypen
+
+                    string[] clientSplit = clientData.Split('-');
+
+                    foreach (string section in clientSplit)
+                    {
+                        Console.WriteLine(section);
+                    }
+
+                    // switch on header
+
+                    switch (clientSplit[0])
+                    {
+                        #region add host
+                        case "addHost":
+                            {
+                                // create hostdata from client data string
+
+                                HostData client = new HostData();
+
+                                client.IP = clientSplit[1];
+                                client.ListenReceivePort = Convert.ToInt32(clientSplit[2]);
+                                client.ListenSendPort = Convert.ToInt32(clientSplit[3]);
+                                client.Name = clientSplit[4];
+
+
+                                if (Hosts.Contains(client) == false)
+                                {
+                                    // add host to list
+
+                                    Hosts.Add(client);
+
+                                    // let client know addition was successful
+
+                                    byte[] msg = Encoding.ASCII.GetBytes("Addition of host successful");
+
+                                    handler.Send(msg);
+                                }
+
+                                else
+                                {
+                                    // let client know host was already added
+
+                                    byte[] msg = Encoding.ASCII.GetBytes("Host already added");
+
+                                    handler.Send(msg);
+                                }
+
+                                break;
+                            }
+                        #endregion
+
+                        #region remove host
+                        case "removeHost":
+                            {
+                                // create hostdata from client data string
+
+                                HostData client = new HostData();
+
+                                client.IP = clientSplit[1];
+                                client.ListenReceivePort = Convert.ToInt32(clientSplit[2]);
+                                client.ListenSendPort = Convert.ToInt32(clientSplit[3]);
+                                client.Name = clientSplit[4];
+
+                                if (Hosts.Contains(client) == true)
+                                {
+                                    // remove host from list
+
+                                    Hosts.Remove(client);
+
+                                    // let client know removal was successful
+
+                                    byte[] msg = Encoding.ASCII.GetBytes("Removal of host successful");
+
+                                    handler.Send(msg);
+                                }
+
+                                else
+                                {
+                                    // let client know host doesnt exist
+
+                                    byte[] msg = Encoding.ASCII.GetBytes("Host doesnt exist");
+
+                                    handler.Send(msg);
+                                }
+
+                                break;
+                            }
+                        #endregion
+
+                        #region add file
+                        case "addFile":
+                            {
+                                // create hostdata from client data string
+
+                                HostData client = new HostData();
+
+                                client.IP = clientSplit[1];
+                                client.ListenReceivePort = Convert.ToInt32(clientSplit[2]);
+                                client.ListenSendPort = Convert.ToInt32(clientSplit[3]);
+                                client.Name = clientSplit[4];
+
+                                if (Hosts.Contains(client) == true)
+                                {
+                                    string file = clientSplit[5];
+
+                                    // add file to file listing
+
+                                    if (FileDirectory.ContainsKey(file) == true)
+                                    {
+                                        if (FileDirectory[file].Contains(client) == false)
+                                        {
+                                            FileDirectory[file].Add(client);
+
+                                            byte[] msg = Encoding.ASCII.GetBytes("File added!");
+
+                                            handler.Send(msg);
+                                        }
+
+                                        else
+                                        {
+                                            byte[] msg = Encoding.ASCII.GetBytes("File already added by this host");
+
+                                            handler.Send(msg);
+                                        }
+
+                                    }
+
+                                    else
+                                    {
+                                        FileDirectory[file] = new List<HostData>();
+
+                                        FileDirectory[file].Add(client);
+
+                                        byte[] msg = Encoding.ASCII.GetBytes("File added!");
+
+                                        handler.Send(msg);
+                                    }
+                                }
+
+                                else
+                                {
+                                    // let client know host doesnt exist
+
+                                    byte[] msg = Encoding.ASCII.GetBytes("Host hasn't been added to host list yet");
+
+                                    handler.Send(msg);
+                                }
+
+                                break;
+                            }
+                        #endregion
+
+                        #region remove file
+                        case "removeFile":
+                            {
+                                HostData client = new HostData();
+
+                                client.IP = clientSplit[1];
+                                client.ListenReceivePort = Convert.ToInt32(clientSplit[2]);
+                                client.ListenSendPort = Convert.ToInt32(clientSplit[3]);
+                                client.Name = clientSplit[4];
+
+                                if (Hosts.Contains(client) == true)
+                                {
+                                    string file = clientSplit[5];
+
+                                    // remove file from file listing
+
+                                    if (FileDirectory.ContainsKey(file) == true)
+                                    {
+                                        if (FileDirectory[file].Contains(client) == true)
+                                        {
+                                            FileDirectory[file].Remove(client);
+
+                                            byte[] msg = Encoding.ASCII.GetBytes("File removed successfully!");
+
+                                            handler.Send(msg);
+                                        }
+
+                                        else
+                                        {
+                                            byte[] msg = Encoding.ASCII.GetBytes("File not added by this host");
+
+                                            handler.Send(msg);
+                                        }
+
+                                    }
+
+                                    else
+                                    {
+                                        byte[] msg = Encoding.ASCII.GetBytes("File not added by any hosts!");
+
+                                        handler.Send(msg);
+                                    }
+                                }
+
+                                else
+                                {
+                                    // let client know host doesnt exist
+
+                                    byte[] msg = Encoding.ASCII.GetBytes("Host hasn't been added to host list yet");
+
+                                    handler.Send(msg);
+                                }
+
+                                break;
+                            }
+
+                        #endregion
+
+                        #region request file
+                        case "requestFile":
+                            {
+                                // create hostdata from client data string
+
+                                HostData client = new HostData();
+
+                                client.IP = clientSplit[1];
+                                client.ListenReceivePort = Convert.ToInt32(clientSplit[2]);
+                                client.ListenSendPort = Convert.ToInt32(clientSplit[3]);
+                                client.Name = clientSplit[4];
+                                Console.WriteLine("Request file from client");
+                                if (Hosts.Contains(client) == true)
+                                {
+                                    string file = clientSplit[5];
+
+                                    if (FileDirectory.ContainsKey(file) == true)
+                                    {
+                                        if (FileDirectory[file].Count > 0)
+                                        {
+                                            // find first host that has file requested
+                                            HostData fromClient = FileDirectory[file][0];
+
+                                            // open socket to fromClient
+
+                                            IPHostEntry fromClientHostInfo = Dns.GetHostEntry(fromClient.IP);
+
+                                            IPAddress fromClientIP = Array.Find(
+                                                fromClientHostInfo.AddressList,
+                                                a => a.AddressFamily == AddressFamily.InterNetwork);
+
+                                            IPEndPoint fromClientEndPoint = new IPEndPoint(fromClientIP, fromClient.ListenSendPort);
+
+                                            Socket fromClientSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+
+                                            fromClientSocket.Connect(fromClientEndPoint);
+
+                                            // build request to fromClient to send file to Client
+
+                                            Console.WriteLine("Connected to: ", fromClientSocket.RemoteEndPoint.ToString());
+
+                                            byte[] fileRequestMessage = Encoding.ASCII.GetBytes("requestFile" + "-" + client.IP + "-" + client.ListenReceivePort.ToString() + "-" + client.Name + "-" + file + "<EOF>");
+
+                                            dataBuffer = new Byte[1024];
+
+                                            // send request to fromClient to send file to client
+
+                                            int sent = fromClientSocket.Send(fileRequestMessage);
+
+                                            //int received = fromClientSocket.Receive(dataBuffer);
+
+                                            //Console.WriteLine("From request client: " + Encoding.ASCII.GetString(dataBuffer, 0, received));
+
+                                            fromClientSocket.Shutdown(SocketShutdown.Both);
+                                            fromClientSocket.Close();
+                                        }
+
+                                        else
+                                        {
+                                            byte[] msg = Encoding.ASCII.GetBytes("No hosts are hosting this file!");
+
+                                            handler.Send(msg);
+                                        }
+
+
+                                    }
+
+                                    else
+                                    {
+                                        byte[] msg = Encoding.ASCII.GetBytes("File not in directory!");
+
+                                        handler.Send(msg);
+                                    }
+
+
+                                }
+
+                                else
+                                {
+                                    // let client know host doesnt exist
+
+                                    byte[] msg = Encoding.ASCII.GetBytes("Host hasn't been added to host list yet");
+
+                                    handler.Send(msg);
+                                }
+
+                                break;
+                            }
+
+                        #endregion
+
+                        default:
+                            break;
                     }
 
 
-                    Console.WriteLine("LISTENER RECEIVE THREAD:: file written");
+                    //byte[] msg = Encoding.ASCII.GetBytes(clientData);
 
-                    fileStream.Close();
-
+                    //handler.Send(msg);
                     handler.Shutdown(SocketShutdown.Both);
                     handler.Close();
                 }
@@ -677,6 +980,7 @@ namespace P2PDist
             Console.Read();
         }
 
+        
         public void StartClient()
         {
             byte[] dataBuffer = new Byte[1024];
