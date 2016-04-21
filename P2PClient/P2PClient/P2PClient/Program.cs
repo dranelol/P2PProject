@@ -287,11 +287,11 @@ namespace P2PClient
 
                     dataBuffer = new Byte[1024];
                     int received = handler.Receive(dataBuffer);
-
+                    Console.WriteLine("received bytes: " + received);
                     // while there's data to accept
                     while (received > 0)
                     {
-                        
+                        Console.WriteLine("received bytes: " + received);
 
                         // decode data sent
 

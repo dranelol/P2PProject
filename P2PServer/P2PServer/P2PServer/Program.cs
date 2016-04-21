@@ -327,7 +327,7 @@ namespace P2PServer
                             client.ListenReceivePort = Convert.ToInt32(clientSplit[2]);
                             client.ListenSendPort = Convert.ToInt32(clientSplit[3]);
                             client.Name = clientSplit[4];
-
+                            Console.WriteLine("Request file from client");
                             if (Hosts.Contains(client) == true)
                             {
                                 string file = clientSplit[5];
