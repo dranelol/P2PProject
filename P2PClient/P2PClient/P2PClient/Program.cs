@@ -273,8 +273,6 @@ namespace P2PClient
 
                     clientData = null;
 
-                   
-
                     string fileName = fileToBeReceived;
 
                     // dump file to disk
@@ -302,7 +300,6 @@ namespace P2PClient
                         dataBuffer = new Byte[1024];
                         received = handler.Receive(dataBuffer);
                     }
-
 
                     Console.WriteLine("LISTENER RECEIVE THREAD:: file written");
 
