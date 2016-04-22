@@ -53,7 +53,20 @@ namespace P2PDist
 
         public DistributedClient()
         {
+            hostData.Name = "default";
+            hostData.ListenPort = listenPort;
+            hostData.SendPort = sendPort;
+            IPHostEntry hostInfo = Dns.GetHostEntry(Dns.GetHostName());
 
+            // get ipv4 address
+
+            IPAddress ip = Array.Find(
+                hostInfo.AddressList,
+                a => a.AddressFamily == AddressFamily.InterNetwork);
+
+            hostData.IP = ip.ToString();
+            Thread client = new Thread(StartClient);
+            client.Start();
         }
 
         public DistributedClient(string joinIP)
@@ -86,7 +99,7 @@ namespace P2PDist
 
             Console.WriteLine("Connected to: ", sender.RemoteEndPoint.ToString());
 
-            byte[] message = Encoding.ASCII.GetBytes("addHost" + "-"
+            byte[] message = Encoding.ASCII.GetBytes("joinCloud" + "-"
                 + hostData.IP + "-"
                 + hostData.ListenPort.ToString() + "-"
                 + hostData.SendPort.ToString() + "-"
@@ -96,10 +109,27 @@ namespace P2PDist
 
             int sent = sender.Send(message);
 
-            // joiner responds with his host/file structure 
             int received = sender.Receive(dataBuffer);
 
-            Console.WriteLine("From joined client: " + Encoding.ASCII.GetString(dataBuffer, 0, received));
+            string receiveString = "";
+
+            Console.WriteLine("received bytes: " + received);
+            // while there's data to accept
+            while (received > 0)
+            {
+                Console.WriteLine("received bytes: " + received);
+
+                // decode data sent
+
+                receiveString += Encoding.ASCII.GetString(dataBuffer, 0, received);
+
+                //clientData += Encoding.ASCII.GetString(dataBuffer, 0, received);
+
+                dataBuffer = new Byte[1024];
+                received = sender.Receive(dataBuffer);
+            }
+
+            Console.WriteLine("received string from client: " + receiveString);
 
             sender.Shutdown(SocketShutdown.Both);
             sender.Close();
@@ -297,66 +327,26 @@ namespace P2PDist
 
         public void SetJoinIP()
         {
-            byte[] dataBuffer = new Byte[1024];
+            // set ip for joining cloud
+            Console.WriteLine("Give port:");
+            string ipString = Console.ReadLine();
 
-            // first add self to joiner 
-
-            IPHostEntry hostInfo = Dns.GetHostEntry(joinIP);
-
-            // get ipv4 address
-
-            IPAddress ip = Array.Find(
-                hostInfo.AddressList,
-                a => a.AddressFamily == AddressFamily.InterNetwork);
-
-            Console.WriteLine(ip.ToString());
-
-            IPEndPoint endPoint = new IPEndPoint(ip, joinerListenPort);
-
-            Socket sender = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+            joinIP = ipString;
         }
 
         public void SetJoinPort()
         {
-            byte[] dataBuffer = new Byte[1024];
+            // set port for joining cloud
+            Console.WriteLine("Give port:");
+            string portString = Console.ReadLine();
+            int port = Convert.ToInt32(portString);
 
-            // first add self to joiner 
-
-            IPHostEntry hostInfo = Dns.GetHostEntry(joinIP);
-
-            // get ipv4 address
-
-            IPAddress ip = Array.Find(
-                hostInfo.AddressList,
-                a => a.AddressFamily == AddressFamily.InterNetwork);
-
-            Console.WriteLine(ip.ToString());
-
-            IPEndPoint endPoint = new IPEndPoint(ip, joinerListenPort);
-
-            Socket sender = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+            joinerListenPort = port;
         }
 
         public void SetListenPort()
         {
-            byte[] dataBuffer = new Byte[1024];
-
-            // first add self to joiner 
-
-            IPHostEntry hostInfo = Dns.GetHostEntry(joinIP);
-
-            // get ipv4 address
-
-            IPAddress ip = Array.Find(
-                hostInfo.AddressList,
-                a => a.AddressFamily == AddressFamily.InterNetwork);
-
-            Console.WriteLine(ip.ToString());
-
-            IPEndPoint endPoint = new IPEndPoint(ip, joinerListenPort);
-
-            Socket sender = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
-
+            
             // set port for receiving files
             Console.WriteLine("Give port:");
             string portString = Console.ReadLine();
@@ -406,28 +396,10 @@ namespace P2PDist
 
         public void StartThreads()
         {
-            byte[] dataBuffer = new Byte[1024];
-
-            // first add self to joiner 
-
-            IPHostEntry hostInfo = Dns.GetHostEntry(joinIP);
-
-            // get ipv4 address
-
-            IPAddress ip = Array.Find(
-                hostInfo.AddressList,
-                a => a.AddressFamily == AddressFamily.InterNetwork);
-
-            Console.WriteLine(ip.ToString());
-
-            IPEndPoint endPoint = new IPEndPoint(ip, joinerListenPort);
-
-            Socket sender = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
-
             Console.WriteLine("starting to listen...");
 
-            Thread requestListening = new Thread(SendFileThread);
-            requestListening.Start();
+            //Thread requestListening = new Thread(SendFileThread);
+            //requestListening.Start();
 
             Thread receiveListening = new Thread(ListenThread);
             receiveListening.Start();
@@ -622,9 +594,9 @@ namespace P2PDist
                 // listen for connections forever
                 while (true)
                 {
-                    Console.WriteLine("waiting...");
+                    Console.WriteLine("LISTENER RECEIVE THREAD:: waiting...");
 
-                    Socket handler = serverListener.Accept();
+                    Socket handler = clientListener.Accept();
 
                     clientData = null;
 
@@ -640,13 +612,12 @@ namespace P2PDist
 
                         if (clientData.IndexOf("<EOF>") > -1)
                         {
-                            Console.WriteLine("breaking");
                             break;
                         }
 
                     }
 
-                    Console.WriteLine("received: " + clientData);
+                    Console.WriteLine("LISTENER RECEIVE THREAD:: received: " + clientData);
 
                     // handle messages
 
@@ -677,8 +648,8 @@ namespace P2PDist
                                 HostData client = new HostData();
 
                                 client.IP = clientSplit[1];
-                                client.ListenReceivePort = Convert.ToInt32(clientSplit[2]);
-                                client.ListenSendPort = Convert.ToInt32(clientSplit[3]);
+                                client.ListenPort = Convert.ToInt32(clientSplit[2]);
+                                client.SendPort = Convert.ToInt32(clientSplit[3]);
                                 client.Name = clientSplit[4];
 
 
@@ -690,9 +661,10 @@ namespace P2PDist
 
                                     // let client know addition was successful
 
-                                    byte[] msg = Encoding.ASCII.GetBytes("Addition of host successful");
+                                    byte[] successMsg = Encoding.ASCII.GetBytes("Addition of host successful");
 
-                                    handler.Send(msg);
+
+                                    handler.Send(successMsg);
                                 }
 
                                 else
@@ -716,8 +688,8 @@ namespace P2PDist
                                 HostData client = new HostData();
 
                                 client.IP = clientSplit[1];
-                                client.ListenReceivePort = Convert.ToInt32(clientSplit[2]);
-                                client.ListenSendPort = Convert.ToInt32(clientSplit[3]);
+                                client.ListenPort = Convert.ToInt32(clientSplit[2]);
+                                client.SendPort = Convert.ToInt32(clientSplit[3]);
                                 client.Name = clientSplit[4];
 
                                 if (Hosts.Contains(client) == true)
@@ -754,8 +726,8 @@ namespace P2PDist
                                 HostData client = new HostData();
 
                                 client.IP = clientSplit[1];
-                                client.ListenReceivePort = Convert.ToInt32(clientSplit[2]);
-                                client.ListenSendPort = Convert.ToInt32(clientSplit[3]);
+                                client.ListenPort = Convert.ToInt32(clientSplit[2]);
+                                client.SendPort = Convert.ToInt32(clientSplit[3]);
                                 client.Name = clientSplit[4];
 
                                 if (Hosts.Contains(client) == true)
@@ -815,8 +787,8 @@ namespace P2PDist
                                 HostData client = new HostData();
 
                                 client.IP = clientSplit[1];
-                                client.ListenReceivePort = Convert.ToInt32(clientSplit[2]);
-                                client.ListenSendPort = Convert.ToInt32(clientSplit[3]);
+                                client.ListenPort = Convert.ToInt32(clientSplit[2]);
+                                client.SendPort = Convert.ToInt32(clientSplit[3]);
                                 client.Name = clientSplit[4];
 
                                 if (Hosts.Contains(client) == true)
@@ -872,13 +844,57 @@ namespace P2PDist
                             {
                                 // create hostdata from client data string
 
-                                HostData client = new HostData();
+                                HostData requestClient = new HostData();
 
-                                client.IP = clientSplit[1];
-                                client.ListenReceivePort = Convert.ToInt32(clientSplit[2]);
-                                client.ListenSendPort = Convert.ToInt32(clientSplit[3]);
-                                client.Name = clientSplit[4];
-                                Console.WriteLine("Request file from client");
+                                requestClient.IP = clientSplit[1];
+                                requestClient.ListenPort = Convert.ToInt32(clientSplit[2]);
+                                requestClient.Name = clientSplit[3];
+
+                                Console.WriteLine("Send file to client");
+
+                                // get ipv4 address for requesting client
+
+                                // instead of telling a client to send file to another client, just straight up send the file to the client 
+
+                                IPHostEntry requestClientInfo = Dns.GetHostEntry(requestClient.IP);
+
+                                IPAddress requestClientIP = Array.Find(
+                                    requestClientInfo.AddressList,
+                                    a => a.AddressFamily == AddressFamily.InterNetwork);
+
+                                IPEndPoint requestClientEndPoint = new IPEndPoint(requestClientIP, requestClient.ListenPort);
+
+                                Socket requestClientSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+
+                                requestClientSocket.Connect(requestClientEndPoint);
+
+                                // send file to client
+
+                                string fileName = filesDirectory + clientSplit[4];
+
+                                try
+                                {
+                                    Console.WriteLine("LISTENER SEND THREAD:: Sending file: " + fileName);
+
+                                    //byte[] preBuffer = Encoding.ASCII.GetBytes(fileName + "-");
+                                    //byte[] postBuffer = Encoding.ASCII.GetBytes("<EOF>");
+
+
+
+                                    //requestClientSocket.SendFile(fileName, preBuffer, postBuffer, TransmitFileOptions.UseDefaultWorkerThread);
+                                    requestClientSocket.SendFile(fileName);
+                                    Console.WriteLine("LISTENER SEND THREAD:: SENT FILE");
+                                    requestClientSocket.Shutdown(SocketShutdown.Both);
+                                    requestClientSocket.Close();
+                                }
+
+                                catch (Exception e)
+                                {
+                                    Console.WriteLine(e.ToString());
+                                }
+
+                                /*
+
                                 if (Hosts.Contains(client) == true)
                                 {
                                     string file = clientSplit[5];
@@ -898,7 +914,7 @@ namespace P2PDist
                                                 fromClientHostInfo.AddressList,
                                                 a => a.AddressFamily == AddressFamily.InterNetwork);
 
-                                            IPEndPoint fromClientEndPoint = new IPEndPoint(fromClientIP, fromClient.ListenSendPort);
+                                            IPEndPoint fromClientEndPoint = new IPEndPoint(fromClientIP, fromClient.SendPort);
 
                                             Socket fromClientSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
 
@@ -908,7 +924,7 @@ namespace P2PDist
 
                                             Console.WriteLine("Connected to: ", fromClientSocket.RemoteEndPoint.ToString());
 
-                                            byte[] fileRequestMessage = Encoding.ASCII.GetBytes("requestFile" + "-" + client.IP + "-" + client.ListenReceivePort.ToString() + "-" + client.Name + "-" + file + "<EOF>");
+                                            byte[] fileRequestMessage = Encoding.ASCII.GetBytes("requestFile" + "-" + client.IP + "-" + client.ListenPort.ToString() + "-" + client.Name + "-" + file + "<EOF>");
 
                                             dataBuffer = new Byte[1024];
 
@@ -952,10 +968,77 @@ namespace P2PDist
 
                                     handler.Send(msg);
                                 }
+                                 * */
 
                                 break;
                             }
 
+                        #endregion
+
+                        #region join cloud
+                        case "joinCloud":
+                            {
+                                // create hostdata from client data string
+                                
+                                HostData client = new HostData();
+
+                                client.IP = clientSplit[1];
+                                client.ListenPort = Convert.ToInt32(clientSplit[2]);
+                                client.SendPort = Convert.ToInt32(clientSplit[3]);
+                                client.Name = clientSplit[4];
+
+                                if (Hosts.Contains(client) == false)
+                                {
+                                    // add host to list
+
+                                    Console.WriteLine("LISTENER RECEIVE THREAD:: adding host to list: " + client.Name);
+                                    Hosts.Add(client);
+
+                                    // let client know addition was successful
+
+                                    byte[] successMsg = Encoding.ASCII.GetBytes("Addition of host successful");
+                                    //ArraySegment<byte> successMsg = new ArraySegment<byte>(Encoding.ASCII.GetBytes("Addition of host successful"));
+
+                                    // also give client known hostfile structure
+
+                                    string hostFile = SerializeFileDirectory();
+
+                                    byte[] hostFileMsg = Encoding.ASCII.GetBytes(hostFile);
+
+                                    //ArraySegment<byte> hostFileMsg = new ArraySegment<byte>(Encoding.ASCII.GetBytes(hostFile));
+
+                                   // List<ArraySegment<byte>> messages = new List<ArraySegment<byte>>();
+
+                                    //Console.WriteLine("LISTENER RECEIVE THREAD:: message0: " + "Addition of host successful");
+                                    //Console.WriteLine("LISTENER RECEIVE THREAD:: message1: " + hostFile);
+
+                                    //messages.Add(successMsg);
+                                    //messages.Add(hostFileMsg);
+
+                                    //Console.WriteLine("LISTENER RECEIVE THREAD:: message0: " + Encoding.ASCII.GetString(messages[0].ToArray<byte>(), 0, messages[0].Count));
+                                    //Console.WriteLine("LISTENER RECEIVE THREAD:: message1: " + Encoding.ASCII.GetString(messages[1].ToArray<byte>(), 0, messages[1].Count));
+
+                                    Console.WriteLine("LISTENER RECEIVE THREAD:: message0: " + Encoding.ASCII.GetString(successMsg, 0, successMsg.Length));
+                                    Console.WriteLine("LISTENER RECEIVE THREAD:: message1: " + Encoding.ASCII.GetString(hostFileMsg, 0, hostFileMsg.Length));
+
+                                    //handler.Send(successMsg);
+                                    //handler.Send(messages);
+
+                                    //handler.Send(successMsg);
+                                    handler.Send(hostFileMsg);
+                                }
+
+                                else
+                                {
+                                    // let client know host was already added
+
+                                    byte[] msg = Encoding.ASCII.GetBytes("Host already added");
+
+                                    handler.Send(msg);
+                                }
+
+                                break;
+                            }
                         #endregion
 
                         default:
@@ -1122,6 +1205,90 @@ namespace P2PDist
 
         }
 
+        public string SerializeFileDirectory()
+        {
+            string retString = "";
+
+            if(FileDirectory.Keys.Count > 0 )
+            {
+                foreach (string key in FileDirectory.Keys)
+                {
+                    retString += key + "-";
+                    foreach (HostData host in FileDirectory[key])
+                    {
+                        retString += host.IP.ToString() + "_" + host.Name + "_" + host.SendPort.ToString() + "_" + host.ListenPort.ToString() + ":";
+                    }
+
+                    retString += "~";
+                }
+            }
+
+            else
+            {
+                retString += "FirstJoin";
+            }
+
+            
+
+            return retString;
+        }
+
+        public void DeserializeFileDirectoryString(string fileDirString)
+        {
+            Console.WriteLine(fileDirString);
+
+            string[] files = fileDirString.Split('~');
+
+            foreach(string file in files)
+            {
+                string[] fileData = file.Split('-');
+
+                string fileName = fileData[0];
+
+                string[] hosts = fileData[1].Split(':');
+
+                foreach(string host in hosts)
+                {
+                    string[] hostData = host.Split('_');
+
+                    HostData newHost = new HostData();
+
+                    newHost.IP = hostData[0];
+                    newHost.Name = hostData[1];
+                    newHost.SendPort = Convert.ToInt32(hostData[2]);
+                    newHost.ListenPort = Convert.ToInt32(hostData[3]);
+
+                    /*
+                    if(FileDirectory.ContainsKey(fileName) == false)
+                    {
+                        // filedirectory didn't contain filename, make new list of hosts for this file
+                        FileDirectory[fileName] = new List<HostData>();
+
+                        // add host to this file
+
+                        FileDirectory[fileName].Add(newHost);
+                    }
+
+                    else
+                    {
+                        // filedirectory contains file, check if we already know host has this file
+                        if(FileDirectory[fileName].Contains(newHost))
+                        {
+                            // nothing
+                        }
+
+                        else
+                        {
+                            FileDirectory[fileName].Add(newHost);
+                        }
+
+                    }
+                     */
+                }
+
+
+            }
+        }
 
 
         public static void Main(string[] args)
@@ -1137,5 +1304,8 @@ namespace P2PDist
             }
         }
 
+        
     }
+
+    
 }
