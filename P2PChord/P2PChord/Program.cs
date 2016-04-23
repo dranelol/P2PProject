@@ -82,6 +82,9 @@ namespace P2PDist
 
             IPHostEntry hostInfo = Dns.GetHostEntry(joinIP);
 
+            // add self to filehost data
+            Hosts.Add(hostData);
+
             // get ipv4 address
 
             IPAddress ip = Array.Find(
