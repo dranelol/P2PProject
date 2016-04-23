@@ -232,29 +232,7 @@ namespace P2PDist
         {
             byte[] dataBuffer = new Byte[1024];
 
-            // first add self to joiner 
-
-            IPHostEntry hostInfo = Dns.GetHostEntry(joinIP);
-
-            // get ipv4 address
-
-            IPAddress ip = Array.Find(
-                hostInfo.AddressList,
-                a => a.AddressFamily == AddressFamily.InterNetwork);
-
-            Console.WriteLine(ip.ToString());
-
-            IPEndPoint endPoint = new IPEndPoint(ip, joinerListenPort);
-
-            Socket sender = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
-
-            // send message to server, add file to server
-            sender.Connect(endPoint);
-
-            Console.WriteLine("Connected to: ", sender.RemoteEndPoint.ToString());
-
             Console.WriteLine("File name:");
-
 
             string fileName = Console.ReadLine();
 
@@ -267,14 +245,42 @@ namespace P2PDist
 
             dataBuffer = new Byte[1024];
 
-            int sent = sender.Send(message);
+            // send addfile request to all known clients
 
-            int received = sender.Receive(dataBuffer);
+            foreach(HostData host in Hosts)
+            {
+                string hostIP = host.IP;
 
-            Console.WriteLine("From server: " + Encoding.ASCII.GetString(dataBuffer, 0, received));
+                IPHostEntry hostInfo = Dns.GetHostEntry(hostIP);
 
-            sender.Shutdown(SocketShutdown.Both);
-            sender.Close();
+                // get ipv4 address
+
+                IPAddress ip = Array.Find(
+                    hostInfo.AddressList,
+                    a => a.AddressFamily == AddressFamily.InterNetwork);
+                 
+                Console.WriteLine(ip.ToString());
+
+                IPEndPoint endPoint = new IPEndPoint(ip, host.ListenPort);
+
+                Socket sender = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+
+                // send message to server, add file to server
+                sender.Connect(endPoint);
+
+                int sent = sender.Send(message);
+
+                //int sent sender.SendTo()
+
+                int received = sender.Receive(dataBuffer);
+
+                Console.WriteLine("From client we connected to: " + Encoding.ASCII.GetString(dataBuffer, 0, received));
+
+                sender.Shutdown(SocketShutdown.Both);
+                sender.Close();
+            }
+
+            
         }
 
         public void RemoveFileFromCloud()
