@@ -65,6 +65,9 @@ namespace P2PDist
                 a => a.AddressFamily == AddressFamily.InterNetwork);
 
             hostData.IP = ip.ToString();
+
+            
+
             Thread client = new Thread(StartClient);
             client.Start();
         }
@@ -91,8 +94,6 @@ namespace P2PDist
                 hostInfo.AddressList,
                 a => a.AddressFamily == AddressFamily.InterNetwork);
 
-            Console.WriteLine(ip.ToString());
-
             IPEndPoint endPoint = new IPEndPoint(ip, joinerListenPort);
 
             Socket sender = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
@@ -100,7 +101,7 @@ namespace P2PDist
             // send message to joiner, adding self as a host
             sender.Connect(endPoint);
 
-            Console.WriteLine("Connected to: ", sender.RemoteEndPoint.ToString());
+            Console.WriteLine("CLIENT THREAD:: Connected to: ", sender.RemoteEndPoint.ToString());
 
             byte[] message = Encoding.ASCII.GetBytes("joinCloud" + "-"
                 + hostData.IP + "-"
@@ -112,15 +113,17 @@ namespace P2PDist
 
             int sent = sender.Send(message);
 
+            Console.WriteLine("CLIENT THREAD:: receiving...");
+
             int received = sender.Receive(dataBuffer);
 
             string receiveString = "";
 
-            Console.WriteLine("received bytes: " + received);
+            Console.WriteLine("CLIENT THREAD:: received bytes: " + received);
             // while there's data to accept
             while (received > 0)
             {
-                Console.WriteLine("received bytes: " + received);
+                Console.WriteLine("CLIENT THREAD:: received bytes: " + received);
 
                 // decode data sent
 
@@ -129,10 +132,13 @@ namespace P2PDist
                 //clientData += Encoding.ASCII.GetString(dataBuffer, 0, received);
 
                 dataBuffer = new Byte[1024];
+
+                Console.WriteLine("CLIENT THREAD:: receiving...");
+
                 received = sender.Receive(dataBuffer);
             }
 
-            Console.WriteLine("received string from client: " + receiveString);
+            Console.WriteLine("CLIENT THREAD:: received string from client: " + receiveString);
 
             sender.Shutdown(SocketShutdown.Both);
             sender.Close();
@@ -337,7 +343,7 @@ namespace P2PDist
         public void SetJoinIP()
         {
             // set ip for joining cloud
-            Console.WriteLine("Give port:");
+            Console.WriteLine("Give IP:");
             string ipString = Console.ReadLine();
 
             joinIP = ipString;
@@ -634,7 +640,7 @@ namespace P2PDist
 
                     clientData = clientData.Substring(0, clientData.Length - 5);
 
-                    Console.WriteLine(clientData);
+                    Console.WriteLine("LISTENER RECEIVE THREAD:: " + clientData);
 
                     // split on hypen
 
@@ -642,7 +648,7 @@ namespace P2PDist
 
                     foreach (string section in clientSplit)
                     {
-                        Console.WriteLine(section);
+                        Console.WriteLine("LISTENER RECEIVE THREAD:: " + section);
                     }
 
                     // switch on header
@@ -1001,6 +1007,7 @@ namespace P2PDist
                                     // add host to list
 
                                     Console.WriteLine("LISTENER RECEIVE THREAD:: adding host to list: " + client.Name);
+
                                     Hosts.Add(client);
 
                                     // let client know addition was successful
@@ -1035,6 +1042,50 @@ namespace P2PDist
 
                                     //handler.Send(successMsg);
                                     handler.Send(hostFileMsg);
+
+                                    // send messages to all known clients besides this one that we have a new client
+
+                                    foreach(HostData host in Hosts)
+                                    {
+                                        if(host != client)
+                                        {
+                                            Console.WriteLine("LISTENER RECEIVE THREAD:: sending addhost of " + client.Name + " to " + host.Name);
+                                            byte[] message = Encoding.ASCII.GetBytes("addHost" + "-"
+                                               + client.IP + "-"
+                                               + client.ListenPort.ToString() + "-"
+                                               + client.SendPort.ToString() + "-"
+                                               + client.Name + "<EOF>");
+
+                                            IPHostEntry hostInfo = Dns.GetHostEntry(host.IP);
+
+                                            // get ipv4 address
+
+                                            IPAddress hostIp = Array.Find(
+                                                hostInfo.AddressList,
+                                                a => a.AddressFamily == AddressFamily.InterNetwork);
+
+                                            Console.WriteLine(ip.ToString());
+
+                                            IPEndPoint hostEndPoint = new IPEndPoint(ip, host.ListenPort);
+
+                                            Socket sender = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+
+                                            sender.Connect(hostEndPoint);
+
+                                            dataBuffer = new Byte[1024];
+
+                                            int sent = sender.Send(message);
+
+                                            int received = sender.Receive(dataBuffer);
+
+                                            Console.WriteLine("LISTENER RECEIVE THREAD:: From server: " + Encoding.ASCII.GetString(dataBuffer, 0, received));
+
+                                            sender.Shutdown(SocketShutdown.Both);
+
+                                            sender.Close();
+                                        }
+                                        
+                                    }
                                 }
 
                                 else
@@ -1103,6 +1154,15 @@ namespace P2PDist
 
                         switch (response)
                         {
+                            case "e":
+                                {
+                                    foreach(HostData host in Hosts)
+                                    {
+                                        Console.WriteLine(host.Name);
+                                    }
+                                }
+
+                                break;
                             case "1":
                                 {
                                     AddSelfToCloud();
