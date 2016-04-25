@@ -85,8 +85,7 @@ namespace P2PDist
 
             IPHostEntry hostInfo = Dns.GetHostEntry(joinIP);
 
-            // add self to filehost data
-            Hosts.Add(hostData);
+            
 
             // get ipv4 address
 
@@ -139,6 +138,23 @@ namespace P2PDist
             }
 
             Console.WriteLine("CLIENT THREAD:: received string from client: " + receiveString);
+
+            if(receiveString == "Host already added")
+            {
+
+            }
+
+            else
+            {
+                DeserializeFileDirectoryString(receiveString);
+            }
+
+            // add self to filehost data
+            if(Hosts.Contains(hostData) == false)
+            {
+                Hosts.Add(hostData);
+            }
+            
 
             sender.Shutdown(SocketShutdown.Both);
             sender.Close();
@@ -287,6 +303,29 @@ namespace P2PDist
 
                 sender.Shutdown(SocketShutdown.Both);
                 sender.Close();
+            }
+
+            // add file to our own filehost directory
+
+            if (FileDirectory.ContainsKey(fileName) == true)
+            {
+                if (FileDirectory[fileName].Contains(hostData) == false)
+                {
+                    FileDirectory[fileName].Add(hostData);
+                }
+
+                else
+                {
+
+                }
+
+            }
+
+            else
+            {
+                FileDirectory[fileName] = new List<HostData>();
+
+                FileDirectory[fileName].Add(hostData);
             }
 
             
@@ -1163,6 +1202,13 @@ namespace P2PDist
                                 }
 
                                 break;
+
+                            case "f":
+                                {
+                                    Console.WriteLine(SerializeFileDirectory());
+                                }
+
+                                break;
                             case "1":
                                 {
                                     AddSelfToCloud();
@@ -1278,8 +1324,15 @@ namespace P2PDist
         {
             string retString = "";
 
-            if(FileDirectory.Keys.Count > 0 )
+            if(Hosts.Count > 0 )
             {
+                foreach(HostData host in Hosts)
+                {
+                    retString += host.IP.ToString() + "_" + host.Name + "_" + host.SendPort.ToString() + "_" + host.ListenPort.ToString() + ":";
+                }
+
+                retString += "%";
+
                 foreach (string key in FileDirectory.Keys)
                 {
                     retString += key + "-";
@@ -1306,18 +1359,16 @@ namespace P2PDist
         {
             Console.WriteLine(fileDirString);
 
-            string[] files = fileDirString.Split('~');
+            string[] hostSplit = fileDirString.Split('%');
 
-            foreach(string file in files)
+            string[] firstHosts = hostSplit[0].Split(':');
+
+            foreach(string host in firstHosts)
             {
-                string[] fileData = file.Split('-');
-
-                string fileName = fileData[0];
-
-                string[] hosts = fileData[1].Split(':');
-
-                foreach(string host in hosts)
+                if(host.Length > 0)
                 {
+                    Console.WriteLine("Host: " + host);
+                    Console.WriteLine("Hostlength: " + host.Length);
                     string[] hostData = host.Split('_');
 
                     HostData newHost = new HostData();
@@ -1327,33 +1378,69 @@ namespace P2PDist
                     newHost.SendPort = Convert.ToInt32(hostData[2]);
                     newHost.ListenPort = Convert.ToInt32(hostData[3]);
 
-                    /*
-                    if(FileDirectory.ContainsKey(fileName) == false)
+                    if (Hosts.Contains(newHost) == false)
                     {
-                        // filedirectory didn't contain filename, make new list of hosts for this file
-                        FileDirectory[fileName] = new List<HostData>();
-
-                        // add host to this file
-
-                        FileDirectory[fileName].Add(newHost);
+                        Console.WriteLine("Adding new host to hosts file: " + newHost.Name);
+                        Hosts.Add(newHost);
                     }
+                }
+                
+            }
 
-                    else
+
+
+            string[] files = hostSplit[1].Split('~');
+
+            foreach(string file in files)
+            {
+                if(file.Length > 0)
+                {
+                    string[] fileData = file.Split('-');
+
+                    string fileName = fileData[0];
+
+                    string[] hosts = fileData[1].Split(':');
+
+                    foreach (string host in hosts)
                     {
-                        // filedirectory contains file, check if we already know host has this file
-                        if(FileDirectory[fileName].Contains(newHost))
+                        string[] hostData = host.Split('_');
+
+                        HostData newHost = new HostData();
+
+                        newHost.IP = hostData[0];
+                        newHost.Name = hostData[1];
+                        newHost.SendPort = Convert.ToInt32(hostData[2]);
+                        newHost.ListenPort = Convert.ToInt32(hostData[3]);
+
+                        /*
+                        if(FileDirectory.ContainsKey(fileName) == false)
                         {
-                            // nothing
+                            // filedirectory didn't contain filename, make new list of hosts for this file
+                            FileDirectory[fileName] = new List<HostData>();
+
+                            // add host to this file
+
+                            FileDirectory[fileName].Add(newHost);
                         }
 
                         else
                         {
-                            FileDirectory[fileName].Add(newHost);
-                        }
+                            // filedirectory contains file, check if we already know host has this file
+                            if(FileDirectory[fileName].Contains(newHost))
+                            {
+                                // nothing
+                            }
 
+                            else
+                            {
+                                FileDirectory[fileName].Add(newHost);
+                            }
+
+                        }
+                         */
                     }
-                     */
                 }
+                
 
 
             }
