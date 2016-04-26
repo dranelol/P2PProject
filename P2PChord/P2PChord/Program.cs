@@ -72,9 +72,27 @@ namespace P2PDist
             client.Start();
         }
 
-        public DistributedClient(string joinIP)
+        public DistributedClient(int listenerPort, string joinerIP, int joinerPort, string name)
         {
-            StartClient();
+            hostData.Name = name;
+            hostData.ListenPort = listenerPort;
+            hostData.SendPort = sendPort;
+            IPHostEntry hostInfo = Dns.GetHostEntry(Dns.GetHostName());
+
+            // get ipv4 address
+
+            IPAddress ip = Array.Find(
+                hostInfo.AddressList,
+                a => a.AddressFamily == AddressFamily.InterNetwork);
+
+            hostData.IP = ip.ToString();
+
+            joinerListenPort = joinerPort;
+            listenPort = listenerPort;
+            joinIP = joinerIP;
+
+            Thread client = new Thread(StartClient);
+            client.Start();
         }
 
         public void AddSelfToCloud()
@@ -335,27 +353,6 @@ namespace P2PDist
         {
             byte[] dataBuffer = new Byte[1024];
 
-            // first add self to joiner 
-
-            IPHostEntry hostInfo = Dns.GetHostEntry(joinIP);
-
-            // get ipv4 address
-
-            IPAddress ip = Array.Find(
-                hostInfo.AddressList,
-                a => a.AddressFamily == AddressFamily.InterNetwork);
-
-            Console.WriteLine(ip.ToString());
-
-            IPEndPoint endPoint = new IPEndPoint(ip, joinerListenPort);
-
-            Socket sender = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
-
-            // send message to server, remove file from server
-            sender.Connect(endPoint);
-
-            Console.WriteLine("Connected to: ", sender.RemoteEndPoint.ToString());
-
             Console.WriteLine("File name:");
 
             string fileName = Console.ReadLine();
@@ -369,14 +366,56 @@ namespace P2PDist
 
             dataBuffer = new Byte[1024];
 
-            int sent = sender.Send(message);
+            // send addfile request to all known clients
 
-            int received = sender.Receive(dataBuffer);
+            foreach (HostData host in Hosts)
+            {
+                string hostIP = host.IP;
 
-            Console.WriteLine("From server: " + Encoding.ASCII.GetString(dataBuffer, 0, received));
+                IPHostEntry hostInfo = Dns.GetHostEntry(hostIP);
 
-            sender.Shutdown(SocketShutdown.Both);
-            sender.Close();
+                // get ipv4 address
+
+                IPAddress ip = Array.Find(
+                    hostInfo.AddressList,
+                    a => a.AddressFamily == AddressFamily.InterNetwork);
+
+                Console.WriteLine(ip.ToString());
+
+                IPEndPoint endPoint = new IPEndPoint(ip, host.ListenPort);
+
+                Socket sender = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+
+                // send message to server, add file to server
+                sender.Connect(endPoint);
+
+                int sent = sender.Send(message);
+
+                //int sent sender.SendTo()
+
+                int received = sender.Receive(dataBuffer);
+
+                Console.WriteLine("From client we connected to: " + Encoding.ASCII.GetString(dataBuffer, 0, received));
+
+                sender.Shutdown(SocketShutdown.Both);
+                sender.Close();
+            }
+
+            // remove file from our own filehost directory
+
+            if (FileDirectory.ContainsKey(fileName) == true)
+            {
+                if (FileDirectory[fileName].Contains(hostData) == true)
+                {
+                    FileDirectory[fileName].Remove(hostData);
+
+                    if (FileDirectory[fileName].Count == 0)
+                    {
+                        FileDirectory.Remove(fileName);
+                    }
+                }
+
+            }
         }
 
         public void SetJoinIP()
@@ -752,6 +791,16 @@ namespace P2PDist
 
                                     Hosts.Remove(client);
 
+                                    // remove them from filehost data
+
+                                    foreach(string file in FileDirectory.Keys)
+                                    {
+                                        if(FileDirectory[file].Contains(client))
+                                        {
+                                            FileDirectory[file].Remove(client);
+                                        }
+                                    }
+
                                     // let client know removal was successful
 
                                     byte[] msg = Encoding.ASCII.GetBytes("Removal of host successful");
@@ -856,6 +905,11 @@ namespace P2PDist
                                         if (FileDirectory[file].Contains(client) == true)
                                         {
                                             FileDirectory[file].Remove(client);
+
+                                            if(FileDirectory[file].Count == 0)
+                                            {
+                                                FileDirectory.Remove(file);
+                                            }
 
                                             byte[] msg = Encoding.ASCII.GetBytes("File removed successfully!");
 
@@ -1162,7 +1216,6 @@ namespace P2PDist
             Console.Read();
         }
 
-        
         public void StartClient()
         {
             byte[] dataBuffer = new Byte[1024];
@@ -1451,7 +1504,11 @@ namespace P2PDist
         {
             if (args.Length > 0)
             {
-                DistributedClient client = new DistributedClient(args[0]);
+                //Console.WriteLine(args[0]);
+                //Console.WriteLine(args[1]);
+                //Console.WriteLine(args[2]);
+                //Console.WriteLine(args[3]);
+                DistributedClient client = new DistributedClient(Convert.ToInt32(args[0]), args[1], Convert.ToInt32(args[2]), args[3]);
             }
 
             else
