@@ -234,50 +234,70 @@ namespace P2PDist
         {
             byte[] dataBuffer = new Byte[1024];
 
-            // first add self to joiner 
-
-            IPHostEntry hostInfo = Dns.GetHostEntry(joinIP);
-
-            // get ipv4 address
-
-            IPAddress ip = Array.Find(
-                hostInfo.AddressList,
-                a => a.AddressFamily == AddressFamily.InterNetwork);
-
-            Console.WriteLine(ip.ToString());
-
-            IPEndPoint endPoint = new IPEndPoint(ip, joinerListenPort);
-
-            Socket sender = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
-
-            // request file from server
-            sender.Connect(endPoint);
-
-            //Console.WriteLine("Connected to: ", (IPEndPoint)(sender.RemoteEndPoint).
-
             Console.WriteLine("File name:");
 
             string fileName = Console.ReadLine();
 
-            byte[] message = Encoding.ASCII.GetBytes("requestFile" + "-"
-                + hostData.IP + "-"
-                + hostData.ListenPort.ToString() + "-"
-                + hostData.SendPort.ToString() + "-"
-                + hostData.Name + "-"
-                + fileName + "<EOF>");
+            if (FileDirectory.ContainsKey(fileName))
+            {
+                if(FileDirectory[fileName].Count > 0)
+                {
+                    HostData fileHost = FileDirectory[fileName][0];
 
-            dataBuffer = new Byte[1024];
+                    IPHostEntry hostInfo = Dns.GetHostEntry(fileHost.IP);
 
-            int sent = sender.Send(message);
+                    // get ipv4 address
 
-            fileToBeReceived = fileName;
+                    IPAddress ip = Array.Find(
+                        hostInfo.AddressList,
+                        a => a.AddressFamily == AddressFamily.InterNetwork);
 
-            //int received = sender.Receive(dataBuffer);
+                    Console.WriteLine(ip.ToString());
 
-            //Console.WriteLine("From server: " + Encoding.ASCII.GetString(dataBuffer, 0, received));
+                    IPEndPoint endPoint = new IPEndPoint(ip, fileHost.ListenPort);
 
-            sender.Shutdown(SocketShutdown.Both);
-            sender.Close();
+                    Socket sender = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+
+                    // request file from server
+                    sender.Connect(endPoint);
+
+                    //Console.WriteLine("Connected to: ", (IPEndPoint)(sender.RemoteEndPoint).
+
+
+
+                    byte[] message = Encoding.ASCII.GetBytes("requestFile" + "-"
+                        + hostData.IP + "-"
+                        + hostData.ListenPort.ToString() + "-"
+                        + hostData.SendPort.ToString() + "-"
+                        + hostData.Name + "-"
+                        + fileName + "<EOF>");
+
+                    dataBuffer = new Byte[1024];
+
+                    int sent = sender.Send(message);
+
+                    fileToBeReceived = fileName;
+
+                    //int received = sender.Receive(dataBuffer);
+
+                    //Console.WriteLine("From server: " + Encoding.ASCII.GetString(dataBuffer, 0, received));
+
+                    sender.Shutdown(SocketShutdown.Both);
+                    sender.Close();
+                }
+
+                else
+                {
+                    Console.WriteLine("Nobody currently hosts this file");
+                }
+            }
+
+            else
+            {
+                Console.WriteLine("File is not known to this client.");
+            }
+
+            
         }
 
         public void AddFileToCloud()
