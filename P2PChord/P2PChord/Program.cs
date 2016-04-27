@@ -72,11 +72,11 @@ namespace P2PDist
             client.Start();
         }
 
-        public DistributedClient(int listenerPort, string joinerIP, int joinerPort, string name)
+        public DistributedClient(int listenerPort, int senderPort, string joinerIP, int joinerPort, string name)
         {
             hostData.Name = name;
             hostData.ListenPort = listenerPort;
-            hostData.SendPort = sendPort;
+            hostData.SendPort = senderPort;
             IPHostEntry hostInfo = Dns.GetHostEntry(Dns.GetHostName());
 
             // get ipv4 address
@@ -89,6 +89,7 @@ namespace P2PDist
 
             joinerListenPort = joinerPort;
             listenPort = listenerPort;
+            sendPort = senderPort;
             joinIP = joinerIP;
 
             Thread client = new Thread(StartClient);
@@ -144,7 +145,11 @@ namespace P2PDist
 
                 // decode data sent
 
-                receiveString += Encoding.ASCII.GetString(dataBuffer, 0, received);
+                string newString = Encoding.ASCII.GetString(dataBuffer, 0, received);
+
+                Console.WriteLine("CLIENT THREAD:: " + newString);
+
+                receiveString += newString;
 
                 //clientData += Encoding.ASCII.GetString(dataBuffer, 0, received);
 
@@ -520,11 +525,11 @@ namespace P2PDist
         {
             Console.WriteLine("starting to listen...");
 
-            //Thread requestListening = new Thread(SendFileThread);
-            //requestListening.Start();
-
             Thread receiveListening = new Thread(ListenThread);
             receiveListening.Start();
+
+            Thread sendListening = new Thread(ReceiveFiles);
+            sendListening.Start();
         }
 
         public void SendFileThread()
@@ -684,6 +689,89 @@ namespace P2PDist
             Console.Read();
         }
 
+
+        public void ReceiveFiles()
+        {
+            IPHostEntry listenerInfo = Dns.GetHostEntry(Dns.GetHostName());
+
+            // get ipv4 address for self (listener)
+
+            IPAddress ip = Array.Find(
+                listenerInfo.AddressList,
+                a => a.AddressFamily == AddressFamily.InterNetwork);
+
+            IPEndPoint endPoint = new IPEndPoint(ip, sendPort);
+
+            Socket clientListener = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+
+            // listening loop
+
+            Console.WriteLine("RECEIVE FILES THREAD:: Listener started");
+
+            string clientData = null;
+
+            byte[] dataBuffer = new Byte[1024];
+
+            try
+            {
+                clientListener.Bind(endPoint);
+                clientListener.Listen(10);
+
+                // listen for connections forever
+                while (true)
+                {
+                    Console.WriteLine("RECEIVE FILES THREAD:: waiting...");
+
+                    Socket handler = clientListener.Accept();
+
+                    clientData = null;
+
+                    string fileName = fileToBeReceived;
+
+                    // dump file to disk
+
+                    string filePath = System.IO.Path.Combine(filesDirectory, fileName);
+
+                    Console.WriteLine("RECEIVE FILES THREAD:: writing to file: " + filePath);
+
+                    FileStream fileStream = File.Create(filePath);
+
+                    dataBuffer = new Byte[1024];
+                    int received = handler.Receive(dataBuffer);
+                    Console.WriteLine("RECEIVE FILES THREAD:: received bytes: " + received);
+                    // while there's data to accept
+                    while (received > 0)
+                    {
+                        Console.WriteLine("RECEIVE FILES THREAD:: received bytes: " + received);
+
+                        // decode data sent
+
+                        fileStream.Write(dataBuffer, 0, received);
+
+                        //clientData += Encoding.ASCII.GetString(dataBuffer, 0, received);
+
+                        dataBuffer = new Byte[1024];
+                        received = handler.Receive(dataBuffer);
+                    }
+
+                    Console.WriteLine("RECEIVE FILES THREAD:: file written");
+
+                    fileStream.Close();
+
+                    handler.Shutdown(SocketShutdown.Both);
+                    handler.Close();
+                }
+
+            }
+
+            catch (Exception e)
+            {
+                Console.WriteLine("RECEIVE FILES THREAD:: " + e.ToString());
+            }
+
+            Console.WriteLine("RECEIVE FILES THREAD:: shutting down listener...");
+            Console.Read();
+        }
         public void ListenThread()
         {
             // this thread listens for requests (send file to client, add file to hosts table, remove file, add host, etc)
@@ -979,13 +1067,15 @@ namespace P2PDist
                         #region request file
                         case "requestFile":
                             {
+                                
                                 // create hostdata from client data string
 
                                 HostData requestClient = new HostData();
 
                                 requestClient.IP = clientSplit[1];
                                 requestClient.ListenPort = Convert.ToInt32(clientSplit[2]);
-                                requestClient.Name = clientSplit[3];
+                                requestClient.SendPort = Convert.ToInt32(clientSplit[3]);
+                                requestClient.Name = clientSplit[4];
 
                                 Console.WriteLine("Send file to client");
 
@@ -999,7 +1089,7 @@ namespace P2PDist
                                     requestClientInfo.AddressList,
                                     a => a.AddressFamily == AddressFamily.InterNetwork);
 
-                                IPEndPoint requestClientEndPoint = new IPEndPoint(requestClientIP, requestClient.ListenPort);
+                                IPEndPoint requestClientEndPoint = new IPEndPoint(requestClientIP, requestClient.SendPort);
 
                                 Socket requestClientSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
 
@@ -1007,7 +1097,7 @@ namespace P2PDist
 
                                 // send file to client
 
-                                string fileName = filesDirectory + clientSplit[4];
+                                string fileName = filesDirectory + clientSplit[5];
 
                                 try
                                 {
@@ -1111,9 +1201,9 @@ namespace P2PDist
                                                 hostInfo.AddressList,
                                                 a => a.AddressFamily == AddressFamily.InterNetwork);
 
-                                            Console.WriteLine(ip.ToString());
+                                            Console.WriteLine(hostIp.ToString());
 
-                                            IPEndPoint hostEndPoint = new IPEndPoint(ip, host.ListenPort);
+                                            IPEndPoint hostEndPoint = new IPEndPoint(hostIp, host.ListenPort);
 
                                             Socket sender = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
 
@@ -1462,7 +1552,12 @@ namespace P2PDist
                 //Console.WriteLine(args[1]);
                 //Console.WriteLine(args[2]);
                 //Console.WriteLine(args[3]);
-                DistributedClient client = new DistributedClient(Convert.ToInt32(args[0]), args[1], Convert.ToInt32(args[2]), args[3]);
+                DistributedClient client = new DistributedClient(
+                    Convert.ToInt32(args[0]), 
+                    Convert.ToInt32(args[1]), 
+                    args[2], 
+                    Convert.ToInt32(args[3]), 
+                    args[4]);
             }
 
             else
