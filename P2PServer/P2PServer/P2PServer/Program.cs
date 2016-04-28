@@ -36,6 +36,8 @@ namespace P2PServer
 
         public List<HostData> Hosts = new List<HostData>();
 
+        public int serverListenPort = 8888;
+
         public Server()
         {
             StartServer();
@@ -51,7 +53,7 @@ namespace P2PServer
                 serverInfo.AddressList,
                 a => a.AddressFamily == AddressFamily.InterNetwork);
 
-            IPEndPoint endPoint = new IPEndPoint(ip, 8888);
+            IPEndPoint endPoint = new IPEndPoint(ip, serverListenPort);
 
             Socket serverListener = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
 
@@ -435,6 +437,12 @@ namespace P2PServer
         public static void Main(string[] args)
         {
             Server server = new Server();
+
+            if (args.Length > 0)
+            {
+                server.serverListenPort = Convert.ToInt32(args[0]);
+                
+            }
         }
     }
 }

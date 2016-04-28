@@ -64,11 +64,17 @@ namespace P2PClient
             client.Start();
         }
 
-        public Client(string sIP)
+        public Client(int listenPort, int sendPort, string sIP, int server, string name)
         {
             serverIP = sIP;
-            hostData.Name = "default";
-            hostData.ListenSendPort = listenerSendPort;
+            hostData.Name = name;
+            hostData.ListenSendPort = sendPort;
+            hostData.ListenReceivePort = listenPort;
+
+            listenerReceivePort = listenPort;
+            listenerSendPort = sendPort;
+            serverPort = server;
+
             IPHostEntry hostInfo = Dns.GetHostEntry(Dns.GetHostName());
 
             // get ipv4 address
@@ -639,7 +645,13 @@ namespace P2PClient
         {
             if (args.Length > 0)
             {
-                Client client = new Client(args[0]);
+                Client client = new Client(
+                    Convert.ToInt32(args[0]),
+                    Convert.ToInt32(args[1]),
+                    args[2],
+                    Convert.ToInt32(args[3]),
+                    args[4]
+                    );
             }
 
             else
